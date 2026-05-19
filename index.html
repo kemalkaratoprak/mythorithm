@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mythorithm | Where Myth Meets Algorithm.</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* TEMEL AYARLAR VE RENK PALETİ */
+        body {
+            background-color: #0B0F19; 
+            color: #E8F4FD;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ÜST BAŞLIK (HEADER) */
+        .header {
+            background-color: #0A0E1A;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #C9A84C; 
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-circle {
+            width: 45px;
+            height: 45px;
+            background-color: #16213E;
+            border: 1px solid #7C5CBF;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #C9A84C;
+            font-size: 20px;
+            box-shadow: 0 0 10px rgba(124, 92, 191, 0.3);
+        }
+
+        .title-area {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title-area h1 { margin: 0; color: #E2D5F8; font-size: 22px; }
+        .status { color: #22C55E; font-size: 12px; margin-top: 2px; }
+        .status i { font-size: 10px; }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tagline { color: #6B7280; font-size: 13px; font-style: italic; }
+
+        /* BUTONLAR */
+        .memory-btn {
+            background-color: transparent;
+            border: 1px solid #C9A84C;
+            color: #C9A84C;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .memory-btn:hover { background-color: rgba(201, 168, 76, 0.1); }
+
+        /* SOHBET ALANI */
+        .chat-container {
+            flex: 1;
+            padding: 30px 10%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* MESAJ BALONLARI */
+        .message-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .bot-wrapper { align-self: flex-start; }
+        .user-wrapper { align-self: flex-end; flex-direction: row-reverse; }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 15px;
+            word-wrap: break-word;
+        }
+
+        .user-msg {
+            background-color: #1E3A5F;
+            color: #E8F4FD;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-msg {
+            background-color: #16213E;
+            color: #C8D8E8;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(124, 92, 191, 0.3);
+        }
+
+        .avatar-mini {
+            width: 30px;
+            height: 30px;
+            background-color: #0A0E1A;
+            border: 1px solid #7C5CBF;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            color: #C9A84C;
+            flex-shrink: 0;
+        }
+
+        .time-stamp { font-size: 10px; color: #4B5563; margin-top: 5px; text-align: right; }
+        .thinking { color: #C9A84C; font-style: italic; font-size: 14px; display: none; padding: 10px; }
+
+        /* ALT GİRDİ PANELİ */
+        .input-panel {
+            background-color: #0A0E1A;
+            padding: 20px 10%;
+            border-top: 1px solid rgba(124, 92, 191, 0.3);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .pdf-btn {
+            background-color: #2D3748;
+            color: white;
+            border: 1px solid #4A5568;
+            padding: 0 20px;
+            height: 46px;
+            border-radius: 23px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pdf-btn:hover { background-color: #4A5568; }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0 25px;
+            height: 46px;
+            border-radius: 23px;
+            border: 1px solid #4A5568;
+            background-color: #111827;
+            color: white;
+            font-size: 15px;
+            outline: none;
+            transition: 0.3s;
+        }
+        input[type="text"]:focus { border-color: #7C5CBF; box-shadow: 0 0 8px rgba(124, 92, 191, 0.3); }
+        
+        .send-btn {
+            background-color: #7C5CBF;
+            color: white;
+            border: none;
+            padding: 0 30px;
+            height: 46px;
+            border-radius: 23px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .send-btn:hover { background-color: #5B3F9A; }
+        #fileInput { display: none; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* YAN PANELLER (SIDEBARS) */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px);
+            z-index: 999; display: none; opacity: 0; transition: opacity 0.3s;
+        }
+        
+        .sidebar {
+            position: fixed; top: 0; right: -400px; width: 350px; height: 100vh;
+            background-color: #0A0E1A; border-left: 1px solid #7C5CBF;
+            z-index: 1000; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; flex-direction: column;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.8);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px; border-bottom: 1px solid rgba(124, 92, 191, 0.3);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .sidebar-header h2 { margin: 0; font-size: 18px; color: #C9A84C; display: flex; align-items: center; gap: 10px; }
+        
+        .close-btn {
+            background: transparent; border: none; color: #6B7280; font-size: 20px;
+            cursor: pointer; transition: 0.3s; padding: 0; height: auto;
+        }
+        .close-btn:hover { color: #E8F4FD; transform: scale(1.1); }
+
+        .sidebar-content { padding: 20px; overflow-y: auto; flex: 1; }
+        
+        .doc-item {
+            background-color: #111827; border: 1px solid #1E3A5F; padding: 15px;
+            border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;
+            transition: 0.3s;
+        }
+        .doc-item:hover { border-color: #7C5CBF; background-color: #16213E; }
+        .doc-icon { font-size: 24px; color: #E74C3C; }
+        .doc-name { font-size: 14px; color: #E8F4FD; word-break: break-all; }
+        .empty-memory { text-align: center; color: #6B7280; font-style: italic; margin-top: 50px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0B0F19; z-index: 2000; display: flex; justify-content: center; align-items: center; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);">
+        <div style="background: #0A0E1A; padding: 40px; border-radius: 20px; border: 1px solid #7C5CBF; width: 350px; box-shadow: 0 15px 35px rgba(0,0,0,0.7); text-align: center;">
+            <div style="width: 60px; height: 60px; background-color: #16213E; border: 1px solid #7C5CBF; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto; font-weight: bold; color: #C9A84C; font-size: 26px; box-shadow: 0 0 15px rgba(124, 92, 191, 0.4);">M</div>
+            
+            <h2 id="authTitle" style="color: #E2D5F8; margin-bottom: 5px; font-size: 24px;">Mythorithm'e Giriş Yap</h2>
+            <p style="color: #6B7280; font-size: 12px; margin-bottom: 30px; font-style: italic;">Where Myth Meets Algorithm.</p>
+            
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label style="color: #E8F4FD; font-size: 14px; display: block; margin-bottom: 8px;">Kullanıcı Adı</label>
+                <input type="text" id="usernameInput" placeholder="Kullanıcı adınızı girin" style="width: 100%; box-sizing: border-box; padding: 12px 20px; border-radius: 10px; border: 1px solid #4A5568; background: #111827; color: white; outline: none;">
+            </div>
+            
+            <div style="margin-bottom: 25px; text-align: left;">
+                <label style="color: #E8F4FD; font-size: 14px; display: block; margin-bottom: 8px;">Şifre</label>
+                <input type="password" id="passwordInput" placeholder="••••••••" style="width: 100%; box-sizing: border-box; padding: 12px 20px; border-radius: 10px; border: 1px solid #4A5568; background: #111827; color: white; outline: none;">
+            </div>
+            
+            <button id="authSubmitBtn" onclick="submitAuthForm()" style="width: 100%; background: #7C5CBF; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='#5B3F9A'" onmouseout="this.style.background='#7C5CBF'">
+                Sisteme Giriş Yap <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+
+            <p id="authToggleText" style="color: #6B7280; font-size: 13px; margin-top: 20px;">
+                Hesabın yok mu? <a href="javascript:void(0)" onclick="toggleAuthMode(true)" style="color: #C9A84C; text-decoration: none; font-weight: bold;">Kayıt Ol</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="header-left">
+            <button onclick="openChatSidebar()" style="background: transparent; border: none; color: #E8F4FD; font-size: 20px; cursor: pointer; margin-right: 5px; transition: 0.3s;" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#E8F4FD'">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <div class="logo-circle">M</div>
+            <div class="title-area">
+                <h1>Mythorithm</h1>
+                <div class="status"><i class="fa-solid fa-circle"></i> Çevrimiçi</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="tagline">Where Myth Meets Algorithm.</div>
+            
+            <button class="memory-btn" id="adminBtn" style="display: none; border-color: #E74C3C; color: #E74C3C;" onclick="openAdminPanel()">
+                <i class="fa-solid fa-user-shield"></i> Admin
+            </button>
+
+            <button class="memory-btn" id="voiceToggle" onclick="toggleVoice()" style="border-color: #4B5563; color: #4B5563;">
+                <i class="fa-solid fa-volume-xmark"></i>
+            </button>
+            <button class="memory-btn" onclick="openMemory()"><i class="fa-solid fa-database"></i> Hafıza</button>
+            <button class="memory-btn" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Ayarlar</button>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatBox">
+        <div class="message-wrapper bot-wrapper" id="defaultWelcomeMessage">
+            <div class="avatar-mini">M</div>
+            <div>
+                <div class="message bot-msg">
+                    Merhaba! Ben Mythorithm. Yazılım, kod ve teknik konularda sana yardımcı olmak için buradayım. Efsane başlıyor. ✨
+                </div>
+                <div class="time-stamp" id="first-msg-time"></div>
+            </div>
+        </div>
+        <div class="thinking" id="thinkingIndicator">Mythorithm düşünüyor <i class="fa-solid fa-circle-notch fa-spin"></i></div>
+    </div>
+
+    <div class="input-panel">
+        <input type="file" id="fileInput" accept=".pdf">
+        <button class="pdf-btn" onclick="document.getElementById('fileInput').click()">
+            <i class="fa-solid fa-paperclip"></i> PDF
+        </button>
+        
+        <button id="micBtn" onclick="startListening()" style="background: transparent; border: none; color: #6B7280; font-size: 20px; cursor: pointer; padding: 0 15px; transition: 0.3s;">
+            <i class="fa-solid fa-microphone"></i>
+        </button>
+        
+        <input type="text" id="userInput" placeholder="Mythorithm'e bir şey sor veya dosya yükle..." autocomplete="off">
+        
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            Gönder <i class="fa-solid fa-paper-plane"></i>
+        </button>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebars()"></div>
+    
+    <div class="sidebar" id="chatSidebar" style="left: -350px; right: auto; border-left: none; border-right: 1px solid #7C5CBF;">
+        <div class="sidebar-header">
+            <h2><i class="fa-regular fa-comments"></i> Sohbet Geçmişi</h2>
+            <button class="close-btn" onclick="closeSidebars()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div style="padding: 15px;">
+            <button onclick="startNewChat()" style="width: 100%; background: transparent; border: 1px dashed #C9A84C; color: #C9A84C; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 8px;" onmouseover="this.style.background='rgba(201, 168, 76, 0.1)'" onmouseout="this.style.background='transparent'">
+                <i class="fa-solid fa-plus"></i> Yeni Sohbet Başlat
+            </button>
+        </div>
+        
+        <div class="sidebar-content" id="chatHistoryList" style="padding-top: 0;">
+        </div>
+    </div>
+
+    <div class="sidebar" id="memorySidebar">
+        <div class="sidebar-header">
+            <h2><i class="fa-solid fa-brain"></i> Vektörel Hafıza</h2>
+            <button class="close-btn" onclick="closeSidebars()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sidebar-content" id="documentList"></div>
+    </div>
+
+    <div class="sidebar" id="adminSidebar" style="border-left-color: #E74C3C; z-index: 1002;">
+        <div class="sidebar-header" style="border-bottom-color: rgba(231, 76, 60, 0.3);">
+            <h2 style="color: #E74C3C;"><i class="fa-solid fa-user-shield"></i> Kullanıcı Yönetimi</h2>
+            <button class="close-btn" onclick="closeSidebars()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sidebar-content" id="adminUserList"></div>
+    </div>
+
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: #0A0E1A; padding: 30px; border-radius: 15px; border: 1px solid #7C5CBF; z-index: 1001; display: none; opacity: 0; transition: all 0.3s; width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" id="settingsModal">
+        <h2 style="color: #C9A84C; margin-top: 0; display: flex; justify-content: space-between;">
+            <span><i class="fa-solid fa-sliders"></i> Sistem Ayarları</span>
+            <button class="close-btn" onclick="closeSettings()"><i class="fa-solid fa-xmark"></i></button>
+        </h2>
+        
+        <div style="margin: 20px 0;">
+            <label style="color: #E8F4FD; font-size: 14px;">Yaratıcılık (Temperature): <span id="tempValue">0.7</span></label>
+            <input type="range" id="tempSlider" min="0" max="1" step="0.1" value="0.7" style="width: 100%; margin-top: 10px; accent-color: #7C5CBF;" oninput="document.getElementById('tempValue').innerText = this.value">
+            <small style="color: #6B7280; font-size: 11px;">0 = Ciddi ve Net | 1 = Yaratıcı ve Özgür</small>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <label style="color: #E8F4FD; font-size: 14px;">Ses Seçimi (TTS):</label>
+            <select id="voiceSelect" style="width: 100%; padding: 10px; margin-top: 10px; background: #111827; color: white; border: 1px solid #4A5568; border-radius: 8px; outline: none;"></select>
+        </div>
+
+        <div style="margin-top: 30px; border-top: 1px solid rgba(231, 76, 60, 0.3); padding-top: 20px;">
+            <button onclick="clearMemoryDB()" style="width: 100%; background: rgba(231, 76, 60, 0.1); color: #E74C3C; border: 1px solid #E74C3C; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: bold;" onmouseover="this.style.background='#E74C3C'; this.style.color='white'" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#E74C3C'">
+                <i class="fa-solid fa-trash-can"></i> Vektörel Hafızayı Sıfırla
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = sessionStorage.getItem("mythorithm_user") || null;
+        let isRegisterMode = false;
+        
+        // 🎯 ÇOKLU SOHBET (MULTI-CHAT) DEĞİŞKENLERİ
+        let currentChatId = null;
+
+        // Sayfa Yükleme Kontrolleri
+        window.addEventListener("DOMContentLoaded", () => {
+            const now = new Date();
+            const firstMsgTime = document.getElementById('first-msg-time');
+            if (firstMsgTime) {
+                firstMsgTime.innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            }
+
+            if (currentUser) {
+                const loginScreen = document.getElementById("loginScreen");
+                if (loginScreen) {
+                    loginScreen.style.transition = "none";
+                    loginScreen.style.transform = "translateY(-100vh)";
+                }
+                loadSavedChat();
+                checkAdminStatus(); // Admin mi diye kontrol et
+            }
+            
+            const userInputEl = document.getElementById("userInput");
+            if (userInputEl) {
+                userInputEl.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") { sendMessage(); }
+                });
+            }
+        });
+
+        // 🛡️ Admin Yetki Kontrolü
+        function checkAdminStatus() {
+            const adminBtn = document.getElementById('adminBtn');
+            if (currentUser && currentUser.toLowerCase() === 'admin') {
+                if(adminBtn) adminBtn.style.display = 'flex';
+            } else {
+                if(adminBtn) adminBtn.style.display = 'none';
+            }
+        }
+
+        // ==========================================
+        // 💬 ÇOKLU SOHBET (MULTI-CHAT) MOTORU
+        // ==========================================
+
+        async function startNewChat(closeMenu = true) {
+            currentChatId = Date.now().toString(); 
+            
+            const timeStr = new Date().getHours().toString().padStart(2, '0') + ":" + new Date().getMinutes().toString().padStart(2, '0');
+            const defaultMsg = `
+                <div class="message-wrapper bot-wrapper" id="defaultWelcomeMessage">
+                    <div class="avatar-mini">M</div>
+                    <div>
+                        <div class="message bot-msg">Yeni bir sayfa açtık. Seni dinliyorum! ✨</div>
+                        <div class="time-stamp">${timeStr}</div>
+                    </div>
+                </div>
+                <div class="thinking" id="thinkingIndicator" style="display:none;">Mythorithm düşünüyor <i class="fa-solid fa-circle-notch fa-spin"></i></div>
+            `;
+            document.getElementById("chatBox").innerHTML = defaultMsg;
+
+            try { await fetch("http://127.0.0.1:8000/reset-chat", { method: "POST" }); } catch(e) {}
+
+            saveChatToLocal(); 
+
+            if(closeMenu) {
+                closeSidebars();
+                loadChatHistoryList(); 
+            }
+        }
+
+        function saveChatToLocal() {
+            const chatBox = document.getElementById("chatBox");
+            if (chatBox && currentUser && currentChatId) {
+                localStorage.setItem(`chat_${currentUser}_${currentChatId}`, chatBox.innerHTML);
+
+                let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
+                let existing = chats.find(c => c.id === currentChatId);
+                
+                if (!existing) {
+                    const time = new Date();
+                    const title = `Sohbet - ${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+                    chats.unshift({ id: currentChatId, title: title }); 
+                    localStorage.setItem(`chats_meta_${currentUser}`, JSON.stringify(chats));
+                }
+            }
+        }
+
+        function loadSavedChat(chatId = null) {
+            if (!currentUser) return;
+            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
+
+            if (chats.length === 0) {
+                startNewChat(false);
+                return;
+            }
+
+            currentChatId = chatId || chats[0].id;
+            
+            const savedHistory = localStorage.getItem(`chat_${currentUser}_${currentChatId}`);
+            if (savedHistory) {
+                document.getElementById("chatBox").innerHTML = savedHistory;
+                setTimeout(scrollToBottom, 50);
+            } else {
+                startNewChat(false); 
+            }
+            
+            try { fetch("http://127.0.0.1:8000/reset-chat", { method: "POST" }); } catch(e) {}
+        }
+
+        function loadChatHistoryList() {
+            const listContainer = document.getElementById("chatHistoryList");
+            if (!listContainer || !currentUser) return;
+
+            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
+            listContainer.innerHTML = '';
+
+            if (chats.length === 0) {
+                listContainer.innerHTML = '<div class="empty-memory">Henüz geçmiş bir sohbetin yok.</div>';
+                return;
+            }
+
+            chats.forEach(chat => {
+                const isActive = chat.id === currentChatId ? 'border-color: #C9A84C; background-color: #16213E;' : 'border-color: rgba(124, 92, 191, 0.3);';
+
+                listContainer.innerHTML += `
+                    <div class="doc-item" style="cursor: pointer; justify-content: space-between; ${isActive}" onclick="switchChat('${chat.id}')">
+                        <div style="display: flex; align-items: center; gap: 15px; overflow: hidden;">
+                            <div class="doc-icon" style="color: #C9A84C; font-size: 16px;"><i class="fa-regular fa-message"></i></div>
+                            <div class="doc-name" style="font-weight: bold; white-space: nowrap;">${chat.title}</div>
+                        </div>
+                        <button onclick="deleteChat('${chat.id}', event)" style="background: transparent; border: none; color: #E74C3C; cursor: pointer; transition: 0.2s;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+            });
+        }
+
+        function switchChat(chatId) {
+            loadSavedChat(chatId); 
+            closeSidebars();
+        }
+
+        function deleteChat(chatId, event) {
+            event.stopPropagation(); 
+            if(!confirm("Bu sohbeti tamamen silmek istiyor musunuz?")) return;
+
+            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
+            chats = chats.filter(c => c.id !== chatId);
+            localStorage.setItem(`chats_meta_${currentUser}`, JSON.stringify(chats));
+
+            localStorage.removeItem(`chat_${currentUser}_${chatId}`);
+
+            if (chatId === currentChatId) {
+                startNewChat(false);
+            }
+            loadChatHistoryList(); 
+        }
+
+        // --- DİNAMİK GİRİŞ & KAYIT MEKANİZMASI ---
+        function toggleAuthMode(toRegister) {
+            isRegisterMode = toRegister;
+            const title = document.getElementById("authTitle");
+            const btn = document.getElementById("authSubmitBtn");
+            const toggleText = document.getElementById("authToggleText");
+
+            if (isRegisterMode) {
+                title.innerText = "Yeni Hesap Oluştur";
+                btn.innerHTML = 'Kayıt Ol ve Başla <i class="fa-solid fa-user-plus"></i>';
+                toggleText.innerHTML = 'Zaten hesabın var mı? <a href="javascript:void(0)" onclick="toggleAuthMode(false)" style="color: #C9A84C; text-decoration: none; font-weight: bold;">Giriş Yap</a>';
+            } else {
+                title.innerText = "Mythorithm'e Giriş Yap";
+                btn.innerHTML = 'Sisteme Giriş Yap <i class="fa-solid fa-right-to-bracket"></i>';
+                toggleText.innerHTML = 'Hesabın yok mu? <a href="javascript:void(0)" onclick="toggleAuthMode(true)" style="color: #C9A84C; text-decoration: none; font-weight: bold;">Kayıt Ol</a>';
+            }
+        }
+
+        async function submitAuthForm() {
+            const userField = document.getElementById("usernameInput");
+            const passField = document.getElementById("passwordInput");
+            
+            const username = userField.value.trim();
+            const password = passField.value.trim();
+            
+            if (username === "" || password === "") {
+                alert("Lütfen tüm alanları doldurun!");
+                return;
+            }
+            
+            const apiEndpoint = isRegisterMode ? "http://127.0.0.1:8000/register" : "http://127.0.0.1:8000/login";
+            
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    if (isRegisterMode) {
+                        alert("🎉 Kayıt başarıyla tamamlandı! Lütfen şimdi giriş yapın.");
+                        userField.value = "";
+                        passField.value = "";
+                        toggleAuthMode(false);
+                    } else {
+                        currentUser = data.username;
+                        sessionStorage.setItem("mythorithm_user", currentUser);
+                        
+                        const loginScreen = document.getElementById("loginScreen");
+                        loginScreen.style.transition = "transform 0.6s cubic-bezier(0.77, 0, 0.175, 1)";
+                        loginScreen.style.transform = "translateY(-100vh)";
+                        
+                        loadSavedChat(); // Login olunca multi-chat'i yükle
+                        checkAdminStatus(); 
+                    }
+                } else {
+                    alert(`❌ İşlem Başarısız: ${data.message}`);
+                }
+            } catch (error) {
+                alert("❌ Sunucu bağlantı hatası! API açık mı?");
+            }
+        }
+
+        // --- KİŞİYE ÖZEL PDF YÜKLEME ---
+        async function setupFileInput() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput || fileInput.files.length === 0) return;
+
+            const file = fileInput.files[0];
+            const fileName = file.name;
+            const chatBox = document.getElementById("chatBox");
+            const thinkingIndicator = document.getElementById("thinkingIndicator");
+
+            addMessage(`📎 Yükleniyor: ${fileName}...`, "user-wrapper", "user-msg");
+            saveChatToLocal();
+
+            if (thinkingIndicator && chatBox) {
+                thinkingIndicator.style.display = "block";
+                chatBox.appendChild(thinkingIndicator);
+            }
+            scrollToBottom();
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("user_id", currentUser); 
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/upload", {
+                    method: "POST",
+                    body: formData 
+                });
+
+                const data = await response.json();
+                if (thinkingIndicator) thinkingIndicator.style.display = "none";
+
+                if (data.status === "success") {
+                    addMessage(`✅ Harika! '${fileName}' başarıyla okundu ve vektörel hafızama aktarıldı.`, "bot-wrapper", "bot-msg");
+                } else {
+                    addMessage(`❌ Yükleme hatası: ${data.message}`, "bot-wrapper", "bot-msg");
+                }
+                saveChatToLocal();
+            } catch (error) {
+                if (thinkingIndicator) thinkingIndicator.style.display = "none";
+                addMessage("❌ Sunucuya bağlanılamadı veya dosya yüklenemedi.", "bot-wrapper", "bot-msg");
+                saveChatToLocal();
+            }
+            
+            fileInput.value = ""; 
+        }
+
+        document.body.addEventListener("change", function(e) {
+            if (e.target && e.target.id === "fileInput") {
+                setupFileInput();
+            }
+        });
+
+        // --- MESAJ GÖNDERME KÖPRÜSÜ ---
+        async function sendMessage() {
+            const userInputField = document.getElementById("userInput");
+            const sendButton = document.getElementById("sendBtn");
+            const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
+            const chatBoxEl = document.getElementById("chatBox");
+
+            if (!userInputField) return;
+            const messageText = userInputField.value.trim();
+            if (!messageText) return;
+
+            addMessage(messageText, "user-wrapper", "user-msg");
+            userInputField.value = "";
+            saveChatToLocal();
+
+            if (sendButton) sendButton.disabled = true;
+            
+            if (thinkingIndicatorEl && chatBoxEl) {
+                thinkingIndicatorEl.style.display = "block";
+                chatBoxEl.appendChild(thinkingIndicatorEl);
+            }
+            scrollToBottom();
+
+            try {
+                const tempSlider = document.getElementById('tempSlider');
+                const tempVal = tempSlider ? parseFloat(tempSlider.value) : 0.7;
+
+                const response = await fetch("http://127.0.0.1:8000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        message: messageText,
+                        temperature: tempVal,
+                        user_id: currentUser 
+                    })
+                });
+
+                const data = await response.json();
+                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
+                addMessage(data.response, "bot-wrapper", "bot-msg");
+                
+                saveChatToLocal();
+                speakText(data.response); 
+            } catch (error) {
+                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
+                addMessage("❌ Sunucuya bağlanılamadı. API açık mı?", "bot-wrapper", "bot-msg");
+                saveChatToLocal();
+            }
+
+            if (sendButton) sendButton.disabled = false;
+        }
+
+        function addMessage(text, wrapperClass, msgClass) {
+            const chatBoxEl = document.getElementById("chatBox");
+            const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
+            if (!chatBoxEl) return;
+
+            const time = new Date();
+            const timeStr = time.getHours().toString().padStart(2, '0') + ":" + time.getMinutes().toString().padStart(2, '0');
+            
+            const wrapperDiv = document.createElement("div");
+            wrapperDiv.className = `message-wrapper ${wrapperClass}`;
+            
+            let avatarHtml = wrapperClass === "bot-wrapper" ? `<div class="avatar-mini">M</div>` : `<div class="avatar-mini" style="color:white; border-color:#1E3A5F; background-color:#1E3A5F;"><i class="fa-solid fa-user"></i></div>`;
+            
+            wrapperDiv.innerHTML = `
+                ${avatarHtml}
+                <div>
+                    <div class="message ${msgClass}">${text.replace(/\n/g, '<br>')}</div>
+                    <div class="time-stamp">${timeStr}</div>
+                </div>
+            `;
+
+            if (thinkingIndicatorEl) {
+                chatBoxEl.insertBefore(wrapperDiv, thinkingIndicatorEl);
+            } else {
+                chatBoxEl.appendChild(wrapperDiv);
+            }
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const chatBoxEl = document.getElementById("chatBox");
+            if (chatBoxEl) chatBoxEl.scrollTop = chatBoxEl.scrollHeight;
+        }
+
+        // --- YAN PANELLERİ (SIDEBARS) KAPATMA ORTAK FONKSİYONU ---
+        function closeSidebars() {
+            const overlay = document.getElementById('sidebarOverlay');
+            const memorySidebar = document.getElementById('memorySidebar');
+            const adminSidebar = document.getElementById('adminSidebar');
+            const chatSidebar = document.getElementById('chatSidebar'); 
+            
+            if (overlay) overlay.style.opacity = '0';
+            if (memorySidebar) memorySidebar.style.right = '-400px';
+            if (adminSidebar) adminSidebar.style.right = '-400px';
+            if (chatSidebar) chatSidebar.style.left = '-400px'; 
+            
+            setTimeout(() => { if(overlay) overlay.style.display = 'none'; }, 300);
+        }
+
+        function openChatSidebar() {
+            const overlay = document.getElementById('sidebarOverlay');
+            const chatSidebar = document.getElementById('chatSidebar');
+            if (!overlay || !chatSidebar) return;
+            
+            loadChatHistoryList();
+
+            overlay.style.display = 'block';
+            setTimeout(() => { 
+                overlay.style.opacity = '1'; 
+                chatSidebar.style.left = '0'; 
+            }, 10);
+        }
+
+        // --- HAFIZA PANELİ ---
+        async function openMemory() {
+            const overlay = document.getElementById('sidebarOverlay');
+            const sidebar = document.getElementById('memorySidebar');
+            const docList = document.getElementById('documentList');
+            
+            if (!overlay || !sidebar || !docList) return;
+
+            overlay.style.display = 'block';
+            setTimeout(() => { overlay.style.opacity = '1'; sidebar.style.right = '0'; }, 10);
+            
+            docList.innerHTML = '<div class="empty-memory"><i class="fa-solid fa-circle-notch fa-spin"></i> Hafıza taranıyor...</div>';
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/documents?user_id=${currentUser}`);
+                const data = await response.json();
+                docList.innerHTML = ''; 
+                
+                if (data.documents && data.documents.length > 0) {
+                    data.documents.forEach(doc => {
+                        docList.innerHTML += `
+                            <div class="doc-item">
+                                <div class="doc-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                                <div class="doc-name">${doc}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    docList.innerHTML = '<div class="empty-memory">Hafızanızda henüz bir belge yok.</div>';
+                }
+            } catch (error) {
+                docList.innerHTML = '<div class="empty-memory" style="color: #E74C3C;">Bağlantı hatası! API açık mı?</div>';
+            }
+        }
+
+        // --- 🛡️ ADMİN KONTROL PANELİ ---
+        async function openAdminPanel() {
+            const overlay = document.getElementById('sidebarOverlay');
+            const sidebar = document.getElementById('adminSidebar');
+            const userList = document.getElementById('adminUserList');
+
+            if (!overlay || !sidebar || !userList) return;
+
+            overlay.style.display = 'block';
+            setTimeout(() => { overlay.style.opacity = '1'; sidebar.style.right = '0'; }, 10);
+
+            userList.innerHTML = '<div class="empty-memory"><i class="fa-solid fa-circle-notch fa-spin"></i> Kullanıcılar taranıyor...</div>';
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/admin/users");
+                const data = await response.json();
+                userList.innerHTML = '';
+
+                if (data.users && data.users.length > 0) {
+                    data.users.forEach(user => {
+                        const deleteBtnHtml = user.username.toLowerCase() === 'admin' 
+                            ? `<span style="color: #6B7280; font-size: 12px; font-style: italic;">Kurucu</span>`
+                            : `<button onclick="deleteUser('${user.username}')" style="background: transparent; border: none; color: #E74C3C; cursor: pointer; font-size: 16px; transition: 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-trash"></i></button>`;
+
+                        userList.innerHTML += `
+                            <div class="doc-item" style="justify-content: space-between; border-color: rgba(231, 76, 60, 0.3);">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <div class="doc-icon" style="color: #3498DB;"><i class="fa-solid fa-user"></i></div>
+                                    <div class="doc-name" style="font-weight: bold;">${user.username}</div>
+                                </div>
+                                ${deleteBtnHtml}
+                            </div>
+                        `;
+                    });
+                } else {
+                    userList.innerHTML = '<div class="empty-memory">Sistemde henüz kullanıcı yok.</div>';
+                }
+            } catch (error) {
+                userList.innerHTML = '<div class="empty-memory" style="color: #E74C3C;">Bağlantı hatası! Sunucu açık mı?</div>';
+            }
+        }
+
+        async function deleteUser(username) {
+            if(!confirm(`DİKKAT: '${username}' adlı kullanıcıyı sistemden tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/admin/users/${username}`, {
+                    method: "DELETE"
+                });
+                const data = await response.json();
+
+                if(data.status === "success") {
+                    openAdminPanel(); 
+                } else {
+                    alert(`❌ Silme hatası: ${data.message}`);
+                }
+            } catch (e) {
+                alert("Sunucu bağlantı hatası!");
+            }
+        }
+
+        // --- AYARLAR KONTROLÜ ---
+        function openSettings() {
+            const overlay = document.getElementById('settingsOverlay');
+            const modal = document.getElementById('settingsModal');
+            if (!overlay || !modal) return;
+
+            overlay.style.display = 'block';
+            modal.style.display = 'block';
+            setTimeout(() => { overlay.style.opacity = '1'; modal.style.opacity = '1'; modal.style.transform = 'translate(-50%, -50%) scale(1)'; }, 10);
+            populateVoices(); 
+        }
+
+        function closeSettings() {
+            const overlay = document.getElementById('settingsOverlay');
+            const modal = document.getElementById('settingsModal');
+            if (!overlay || !modal) return;
+
+            overlay.style.opacity = '0';
+            modal.style.opacity = '0'; modal.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            setTimeout(() => { overlay.style.display = 'none'; modal.style.display = 'none'; }, 300);
+        }
+
+        // --- SES SEÇİMİ (TTS) VE DİĞER ARAÇLAR ---
+        let isVoiceEnabled = false;
+        function toggleVoice() {
+            isVoiceEnabled = !isVoiceEnabled;
+            const btn = document.getElementById("voiceToggle");
+            if (isVoiceEnabled) {
+                btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                btn.style.color = '#22C55E'; btn.style.borderColor = '#22C55E';
+                speakText("Sesli yanıt sistemi aktifleştirildi.");
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+                btn.style.color = '#4B5563'; btn.style.borderColor = '#4B5563';
+                window.speechSynthesis.cancel(); 
+            }
+        }
+
+        let availableVoices = [];
+        let isVoicesPopulated = false; 
+        function populateVoices() {
+            if (isVoicesPopulated) return; 
+            availableVoices = window.speechSynthesis.getVoices();
+            if (availableVoices.length === 0) return; 
+            
+            const voiceSelect = document.getElementById("voiceSelect");
+            if (!voiceSelect) return;
+            voiceSelect.innerHTML = ''; 
+            
+            availableVoices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = index;
+                if(voice.lang.includes('tr')) option.selected = true; 
+                voiceSelect.appendChild(option);
+            });
+            isVoicesPopulated = true; 
+        }
+        window.speechSynthesis.onvoiceschanged = populateVoices;
+
+        function speakText(text) {
+            if (!isVoiceEnabled || !text) return; 
+            window.speechSynthesis.cancel(); 
+            const cleanText = text.replace(/[*_#`~]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            const voiceSelect = document.getElementById("voiceSelect");
+            if (availableVoices.length > 0 && voiceSelect && voiceSelect.value !== "") {
+                utterance.voice = availableVoices[voiceSelect.value];
+            } else {
+                utterance.lang = 'tr-TR'; 
+            }
+            utterance.rate = 1.0;     
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // STT Dinleyicisi
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'tr-TR'; recognition.interimResults = false; 
+            function startListening() {
+                const micBtn = document.getElementById("micBtn");
+                if (micBtn) { micBtn.style.color = "#E74C3C"; micBtn.innerHTML = '<i class="fa-solid fa-microphone-lines fa-beat"></i>'; }
+                recognition.start();
+            }
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                const userInputField = document.getElementById("userInput");
+                if (userInputField) userInputField.value = transcript;
+                const micBtn = document.getElementById("micBtn");
+                if (micBtn) { micBtn.style.color = "#6B7280"; micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; }
+                sendMessage(); 
+            }
+            recognition.onerror = function(event) {
+                const micBtn = document.getElementById("micBtn");
+                if (micBtn) { micBtn.style.color = "#6B7280"; micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; }
+            }
+        }
+
+        async function clearMemoryDB() {
+            if(!confirm("Tüm vektörel hafızayı (PDF'leri) silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+            try {
+                const response = await fetch("http://127.0.0.1:8000/clear-memory", { method: "POST" });
+                const data = await response.json();
+                if(data.status === "success") {
+                    addMessage("✅ Hafıza başarıyla sıfırlandı. Yeni belgeler yüklemeye hazırım.", "bot-wrapper", "bot-msg");
+                    if(currentUser) localStorage.removeItem(`chat_history_${currentUser}`);
+                    closeSettings();
+                }
+            } catch (e) { alert("Sunucu bağlantı hatası!"); }
+        }
+    </script>
+</body>
+</html>
