@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import shutil
 import os
@@ -57,7 +59,7 @@ app.add_middleware(
 kutuphaneci = DocumentManager()
 
 # 2. Motoru Başlatıyor ve Kütüphaneciyi Ona Bağlıyoruz
-bot_motoru = AIBot(model_name="claude-haiku-4-5-20251001", document_manager=kutuphaneci)
+bot_motoru = AIBot(model_name="llama3-8b-8192", document_manager=kutuphaneci)
 
 # --- VERİ ŞABLONLARI ---
 
@@ -205,3 +207,13 @@ def delete_user(username_to_delete: str):
 def reset_chat_history():
     bot_motoru.reset_history()
     return {"status": "success", "message": "Bot hafızası sıfırlandı."}
+
+# --- STATİK DOSYALAR VE ARAYÜZ ---
+
+# avatar_logo.png gibi statik dosyaları serve et
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+# Ana sayfa — index.html'i döndür
+@app.get("/app")
+def serve_frontend():
+    return FileResponse("index.html")
