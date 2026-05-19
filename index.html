@@ -391,7 +391,7 @@
 
     <script>
         // API adresini buradan yönet — Railway URL'ini buraya yapıştır
-        const API_BASE = "https://web-production-0c8e9.up.railway.app";
+        const API_BASE = "http://127.0.0.1:8000";
         let currentUser = sessionStorage.getItem("mythorithm_user") || null;
         let isRegisterMode = false;
 
@@ -689,6 +689,28 @@
             }, 10);
             
             // İleride buraya eski sohbetleri çeken bir fonksiyon (loadChatHistoryList) ekleyeceğiz
+        }
+
+        // Yeni Sohbet Başlat
+        async function startNewChat() {
+            try {
+                // API'ye bot hafızasını sıfırla isteği gönder
+                await fetch(`${API_BASE}/reset-chat`, { method: "POST" });
+            } catch (e) {
+                console.warn("reset-chat hatası:", e);
+            }
+
+            // Ekrandaki mesajları temizle
+            const chatBox = document.getElementById("chatBox");
+            if (chatBox) chatBox.innerHTML = "";
+
+            // Kaydedilmiş yerel geçmişi de sil
+            if (currentUser) {
+                localStorage.removeItem(`chat_history_${currentUser}`);
+            }
+
+            // Paneli kapat
+            closeSidebars();
         }
 
         // --- HAFIZA PANELİ ---
