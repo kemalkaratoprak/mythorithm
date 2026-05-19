@@ -214,7 +214,7 @@
         .sidebar {
             position: fixed; top: 0; right: -400px; width: 350px; height: 100vh;
             background-color: #0A0E1A; border-left: 1px solid #7C5CBF;
-            z-index: 1000; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex; flex-direction: column;
             box-shadow: -5px 0 25px rgba(0,0,0,0.8);
         }
@@ -390,11 +390,10 @@
     </div>
 
     <script>
+        // API adresini buradan yönet — Railway URL'ini buraya yapıştır
+        const API_BASE = "http://127.0.0.1:8000";
         let currentUser = sessionStorage.getItem("mythorithm_user") || null;
         let isRegisterMode = false;
-        
-        // 🎯 ÇOKLU SOHBET (MULTI-CHAT) DEĞİŞKENLERİ
-        let currentChatId = null;
 
         // Sayfa Yükleme Kontrolleri
         window.addEventListener("DOMContentLoaded", () => {
@@ -425,6 +424,7 @@
         // 🛡️ Admin Yetki Kontrolü
         function checkAdminStatus() {
             const adminBtn = document.getElementById('adminBtn');
+            // Eğer giriş yapan kişi 'admin' ise butonu göster
             if (currentUser && currentUser.toLowerCase() === 'admin') {
                 if(adminBtn) adminBtn.style.display = 'flex';
             } else {
@@ -432,121 +432,23 @@
             }
         }
 
-        // ==========================================
-        // 💬 ÇOKLU SOHBET (MULTI-CHAT) MOTORU
-        // ==========================================
-
-        async function startNewChat(closeMenu = true) {
-            currentChatId = Date.now().toString(); 
-            
-            const timeStr = new Date().getHours().toString().padStart(2, '0') + ":" + new Date().getMinutes().toString().padStart(2, '0');
-            const defaultMsg = `
-                <div class="message-wrapper bot-wrapper" id="defaultWelcomeMessage">
-                    <div class="avatar-mini">M</div>
-                    <div>
-                        <div class="message bot-msg">Yeni bir sayfa açtık. Seni dinliyorum! ✨</div>
-                        <div class="time-stamp">${timeStr}</div>
-                    </div>
-                </div>
-                <div class="thinking" id="thinkingIndicator" style="display:none;">Mythorithm düşünüyor <i class="fa-solid fa-circle-notch fa-spin"></i></div>
-            `;
-            document.getElementById("chatBox").innerHTML = defaultMsg;
-
-            try { await fetch("http://127.0.0.1:8000/reset-chat", { method: "POST" }); } catch(e) {}
-
-            saveChatToLocal(); 
-
-            if(closeMenu) {
-                closeSidebars();
-                loadChatHistoryList(); 
-            }
-        }
-
+        // --- SOHBET YEDEKLEME MOTORU ---
         function saveChatToLocal() {
             const chatBox = document.getElementById("chatBox");
-            if (chatBox && currentUser && currentChatId) {
-                localStorage.setItem(`chat_${currentUser}_${currentChatId}`, chatBox.innerHTML);
+            if (chatBox && currentUser) {
+                localStorage.setItem(`chat_history_${currentUser}`, chatBox.innerHTML);
+            }
+        }
 
-                let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
-                let existing = chats.find(c => c.id === currentChatId);
-                
-                if (!existing) {
-                    const time = new Date();
-                    const title = `Sohbet - ${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
-                    chats.unshift({ id: currentChatId, title: title }); 
-                    localStorage.setItem(`chats_meta_${currentUser}`, JSON.stringify(chats));
+        function loadSavedChat() {
+            const chatBox = document.getElementById("chatBox");
+            if (chatBox && currentUser) {
+                const savedHistory = localStorage.getItem(`chat_history_${currentUser}`);
+                if (savedHistory) {
+                    chatBox.innerHTML = savedHistory;
+                    setTimeout(scrollToBottom, 50);
                 }
             }
-        }
-
-        function loadSavedChat(chatId = null) {
-            if (!currentUser) return;
-            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
-
-            if (chats.length === 0) {
-                startNewChat(false);
-                return;
-            }
-
-            currentChatId = chatId || chats[0].id;
-            
-            const savedHistory = localStorage.getItem(`chat_${currentUser}_${currentChatId}`);
-            if (savedHistory) {
-                document.getElementById("chatBox").innerHTML = savedHistory;
-                setTimeout(scrollToBottom, 50);
-            } else {
-                startNewChat(false); 
-            }
-            
-            try { fetch("http://127.0.0.1:8000/reset-chat", { method: "POST" }); } catch(e) {}
-        }
-
-        function loadChatHistoryList() {
-            const listContainer = document.getElementById("chatHistoryList");
-            if (!listContainer || !currentUser) return;
-
-            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
-            listContainer.innerHTML = '';
-
-            if (chats.length === 0) {
-                listContainer.innerHTML = '<div class="empty-memory">Henüz geçmiş bir sohbetin yok.</div>';
-                return;
-            }
-
-            chats.forEach(chat => {
-                const isActive = chat.id === currentChatId ? 'border-color: #C9A84C; background-color: #16213E;' : 'border-color: rgba(124, 92, 191, 0.3);';
-
-                listContainer.innerHTML += `
-                    <div class="doc-item" style="cursor: pointer; justify-content: space-between; ${isActive}" onclick="switchChat('${chat.id}')">
-                        <div style="display: flex; align-items: center; gap: 15px; overflow: hidden;">
-                            <div class="doc-icon" style="color: #C9A84C; font-size: 16px;"><i class="fa-regular fa-message"></i></div>
-                            <div class="doc-name" style="font-weight: bold; white-space: nowrap;">${chat.title}</div>
-                        </div>
-                        <button onclick="deleteChat('${chat.id}', event)" style="background: transparent; border: none; color: #E74C3C; cursor: pointer; transition: 0.2s;"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                `;
-            });
-        }
-
-        function switchChat(chatId) {
-            loadSavedChat(chatId); 
-            closeSidebars();
-        }
-
-        function deleteChat(chatId, event) {
-            event.stopPropagation(); 
-            if(!confirm("Bu sohbeti tamamen silmek istiyor musunuz?")) return;
-
-            let chats = JSON.parse(localStorage.getItem(`chats_meta_${currentUser}`)) || [];
-            chats = chats.filter(c => c.id !== chatId);
-            localStorage.setItem(`chats_meta_${currentUser}`, JSON.stringify(chats));
-
-            localStorage.removeItem(`chat_${currentUser}_${chatId}`);
-
-            if (chatId === currentChatId) {
-                startNewChat(false);
-            }
-            loadChatHistoryList(); 
         }
 
         // --- DİNAMİK GİRİŞ & KAYIT MEKANİZMASI ---
@@ -579,7 +481,7 @@
                 return;
             }
             
-            const apiEndpoint = isRegisterMode ? "http://127.0.0.1:8000/register" : "http://127.0.0.1:8000/login";
+            const apiEndpoint = isRegisterMode ? `${API_BASE}/register` : `${API_BASE}/login`;
             
             try {
                 const response = await fetch(apiEndpoint, {
@@ -604,8 +506,14 @@
                         loginScreen.style.transition = "transform 0.6s cubic-bezier(0.77, 0, 0.175, 1)";
                         loginScreen.style.transform = "translateY(-100vh)";
                         
-                        loadSavedChat(); // Login olunca multi-chat'i yükle
-                        checkAdminStatus(); 
+                        loadSavedChat();
+                        checkAdminStatus(); // Giriş yapınca yetkisini kontrol et
+                        
+                        setTimeout(() => {
+                            if(!localStorage.getItem(`chat_history_${currentUser}`)) {
+                                addMessage(`👋 Hoş geldin ${currentUser}! Seninle çalışmaya hazırım.`, "bot-wrapper", "bot-msg");
+                            }
+                        }, 600);
                     }
                 } else {
                     alert(`❌ İşlem Başarısız: ${data.message}`);
@@ -639,7 +547,7 @@
             formData.append("user_id", currentUser); 
 
             try {
-                const response = await fetch("http://127.0.0.1:8000/upload", {
+                const response = await fetch(`${API_BASE}/upload`, {
                     method: "POST",
                     body: formData 
                 });
@@ -695,7 +603,7 @@
                 const tempSlider = document.getElementById('tempSlider');
                 const tempVal = tempSlider ? parseFloat(tempSlider.value) : 0.7;
 
-                const response = await fetch("http://127.0.0.1:8000/chat", {
+                const response = await fetch(`${API_BASE}/chat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
@@ -759,28 +667,28 @@
             const overlay = document.getElementById('sidebarOverlay');
             const memorySidebar = document.getElementById('memorySidebar');
             const adminSidebar = document.getElementById('adminSidebar');
-            const chatSidebar = document.getElementById('chatSidebar'); 
+            const chatSidebar = document.getElementById('chatSidebar'); // YENİ EKLENDİ
             
             if (overlay) overlay.style.opacity = '0';
             if (memorySidebar) memorySidebar.style.right = '-400px';
             if (adminSidebar) adminSidebar.style.right = '-400px';
-            if (chatSidebar) chatSidebar.style.left = '-400px'; 
+            if (chatSidebar) chatSidebar.style.left = '-400px'; // YENİ EKLENDİ (Soldan kapansın diye)
             
             setTimeout(() => { if(overlay) overlay.style.display = 'none'; }, 300);
         }
 
+        // YENİ: Sohbet Menüsünü Aç
         function openChatSidebar() {
             const overlay = document.getElementById('sidebarOverlay');
             const chatSidebar = document.getElementById('chatSidebar');
             if (!overlay || !chatSidebar) return;
-            
-            loadChatHistoryList();
-
             overlay.style.display = 'block';
             setTimeout(() => { 
                 overlay.style.opacity = '1'; 
-                chatSidebar.style.left = '0'; 
+                chatSidebar.style.left = '0'; // Menü soldan kayarak gelsin
             }, 10);
+            
+            // İleride buraya eski sohbetleri çeken bir fonksiyon (loadChatHistoryList) ekleyeceğiz
         }
 
         // --- HAFIZA PANELİ ---
@@ -797,7 +705,7 @@
             docList.innerHTML = '<div class="empty-memory"><i class="fa-solid fa-circle-notch fa-spin"></i> Hafıza taranıyor...</div>';
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/documents?user_id=${currentUser}`);
+                const response = await fetch(`${API_BASE}/documents?user_id=${currentUser}`);
                 const data = await response.json();
                 docList.innerHTML = ''; 
                 
@@ -818,7 +726,7 @@
             }
         }
 
-        // --- 🛡️ ADMİN KONTROL PANELİ ---
+        // --- 🛡️ ADMİN KONTROL PANELİ (YENİ) ---
         async function openAdminPanel() {
             const overlay = document.getElementById('sidebarOverlay');
             const sidebar = document.getElementById('adminSidebar');
@@ -832,12 +740,13 @@
             userList.innerHTML = '<div class="empty-memory"><i class="fa-solid fa-circle-notch fa-spin"></i> Kullanıcılar taranıyor...</div>';
 
             try {
-                const response = await fetch("http://127.0.0.1:8000/admin/users");
+                const response = await fetch(`${API_BASE}/admin/users`);
                 const data = await response.json();
                 userList.innerHTML = '';
 
                 if (data.users && data.users.length > 0) {
                     data.users.forEach(user => {
+                        // Ana admin hesabını kazara silmemek için Çöp Kutusunu saklıyoruz
                         const deleteBtnHtml = user.username.toLowerCase() === 'admin' 
                             ? `<span style="color: #6B7280; font-size: 12px; font-style: italic;">Kurucu</span>`
                             : `<button onclick="deleteUser('${user.username}')" style="background: transparent; border: none; color: #E74C3C; cursor: pointer; font-size: 16px; transition: 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-trash"></i></button>`;
@@ -860,16 +769,18 @@
             }
         }
 
+        // Kullanıcı Silme Fonksiyonu
         async function deleteUser(username) {
             if(!confirm(`DİKKAT: '${username}' adlı kullanıcıyı sistemden tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/admin/users/${username}`, {
+                const response = await fetch(`${API_BASE}/admin/users/${username}`, {
                     method: "DELETE"
                 });
                 const data = await response.json();
 
                 if(data.status === "success") {
+                    // Kullanıcı başarıyla silindiyse listeyi hemen yenile
                     openAdminPanel(); 
                 } else {
                     alert(`❌ Silme hatası: ${data.message}`);
@@ -881,7 +792,7 @@
 
         // --- AYARLAR KONTROLÜ ---
         function openSettings() {
-            const overlay = document.getElementById('settingsOverlay');
+            const overlay = document.getElementById('sidebarOverlay');
             const modal = document.getElementById('settingsModal');
             if (!overlay || !modal) return;
 
@@ -892,7 +803,7 @@
         }
 
         function closeSettings() {
-            const overlay = document.getElementById('settingsOverlay');
+            const overlay = document.getElementById('sidebarOverlay');
             const modal = document.getElementById('settingsModal');
             if (!overlay || !modal) return;
 
@@ -950,7 +861,7 @@
             } else {
                 utterance.lang = 'tr-TR'; 
             }
-            utterance.rate = 1.0;     
+            utterance.rate = 1.0;     
             window.speechSynthesis.speak(utterance);
         }
 
@@ -981,7 +892,7 @@
         async function clearMemoryDB() {
             if(!confirm("Tüm vektörel hafızayı (PDF'leri) silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
             try {
-                const response = await fetch("http://127.0.0.1:8000/clear-memory", { method: "POST" });
+                const response = await fetch(`${API_BASE}/clear-memory`, { method: "POST" });
                 const data = await response.json();
                 if(data.status === "success") {
                     addMessage("✅ Hafıza başarıyla sıfırlandı. Yeni belgeler yüklemeye hazırım.", "bot-wrapper", "bot-msg");
