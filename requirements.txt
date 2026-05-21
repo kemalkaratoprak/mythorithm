@@ -9,3 +9,5 @@ langchain-text-splitters
 python-multipart
 psycopg2-binary
 aiofiles
+python-docx
+openpyxl

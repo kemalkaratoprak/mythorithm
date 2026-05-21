@@ -137,6 +137,12 @@ def chat_with_bot(request: ChatRequest):
 # PDF Yükleme Köprüsü
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel")):
+    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".txt"}
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        return {"status": "error", "message": f"Desteklenmeyen dosya formatı: {ext}. İzin verilenler: PDF, DOCX, XLSX, TXT"}
+
     print(f"Dosya alınıyor: {file.filename} (Sahibi: {user_id})")
     file_path = file.filename
 
