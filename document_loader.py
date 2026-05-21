@@ -1,14 +1,10 @@
 import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pinecone import Pinecone, ServerlessSpec
-from sentence_transformers import SentenceTransformer
 
 class DocumentManager:
     def __init__(self):
-        """Pinecone bağlantısını kurar. API key environment variable'dan okunur."""
-        print("Sistem: Embedding modeli yükleniyor...")
-        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
-
+        """Pinecone bağlantısını kurar."""
         api_key = os.environ.get("PINECONE_API_KEY")
         self.pc = Pinecone(api_key=api_key)
 
@@ -16,17 +12,27 @@ class DocumentManager:
 
         existing_indexes = [i.name for i in self.pc.list_indexes()]
         if index_name not in existing_indexes:
-            print(f"Sistem: '{index_name}' index'i bulunamadı, oluşturuluyor...")
+            print(f"Sistem: '{index_name}' index'i oluşturuluyor...")
             self.pc.create_index(
                 name=index_name,
-                dimension=384,
+                dimension=1024,  # multilingual-e5-large boyutu
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1")
             )
-            print(f"Sistem: '{index_name}' index'i başarıyla oluşturuldu.")
 
         self.index = self.pc.Index(index_name)
+        # Pinecone'un kendi inference API'si — model RAM'e yüklenmiyor
+        self.embed_model = "multilingual-e5-large"
         print("Sistem: Pinecone vektör veritabanı aktif.\n")
+
+    def get_embeddings(self, texts):
+        """Pinecone inference API ile embedding üretir."""
+        result = self.pc.inference.embed(
+            model=self.embed_model,
+            inputs=texts,
+            parameters={"input_type": "passage"}
+        )
+        return [item["values"] for item in result]
 
     def read_file(self, file_path):
         """Dosya uzantısına göre doğru okuyucuyu seçer ve metni döndürür."""
@@ -45,8 +51,7 @@ class DocumentManager:
         elif ext == ".docx":
             from docx import Document
             doc = Document(file_path)
-            text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-            # Tablolardaki metni de okuyalım
+            text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
             for table in doc.tables:
                 for row in table.rows:
                     for cell in row.cells:
@@ -66,37 +71,31 @@ class DocumentManager:
                         text += row_text + "\n"
             return text
 
-        elif ext == ".txt":
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                return f.read()
-
-        elif ext in {".py", ".js", ".ts", ".html", ".css", ".java", ".cpp", ".c",
-                     ".cs", ".php", ".rb", ".go", ".rs", ".swift", ".kt", ".json",
-                     ".xml", ".yaml", ".yml", ".md", ".sh", ".bat"}:
+        elif ext in {".txt", ".py", ".js", ".ts", ".html", ".css", ".java", ".cpp",
+                     ".c", ".cs", ".php", ".rb", ".go", ".rs", ".swift", ".kt",
+                     ".json", ".xml", ".yaml", ".yml", ".md", ".sh", ".bat"}:
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-            # Dosya adını ve dilini bağlama ekle ki bot daha iyi anlasın
             return f"[Dosya: {os.path.basename(file_path)}]\n\n{content}"
 
         else:
             raise ValueError(f"Desteklenmeyen dosya formatı: {ext}")
 
     def add_document(self, file_path, user_id):
-        """Dosyayı okur, parçalar, vektöre çevirir ve Pinecone'a kullanıcı etiketiyle ekler."""
+        """Dosyayı okur, parçalar, vektöre çevirir ve Pinecone'a ekler."""
         text = self.read_file(file_path)
-
         if not text.strip():
             raise ValueError("Dosyadan metin okunamadı veya dosya boş.")
 
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_text(text)
 
+        embeddings = self.get_embeddings(chunks)
+
         vectors = []
-        for i, chunk in enumerate(chunks):
-            embedding = self.embedder.encode(chunk).tolist()
-            doc_id = f"{user_id}_{os.path.basename(file_path)}_chunk_{i}"
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             vectors.append({
-                "id": doc_id,
+                "id": f"{user_id}_{os.path.basename(file_path)}_chunk_{i}",
                 "values": embedding,
                 "metadata": {
                     "owner": user_id,
@@ -112,9 +111,15 @@ class DocumentManager:
         print(f"Sistem: {os.path.basename(file_path)} dosyası {user_id} hafızasına kaydedildi.")
 
     def search_memory(self, query, user_id, n_results=3):
-        """Sadece ilgili kullanıcıya ait belgeler arasında arama yapar."""
+        """Kullanıcıya ait belgeler arasında arama yapar."""
         try:
-            query_embedding = self.embedder.encode(query).tolist()
+            result = self.pc.inference.embed(
+                model=self.embed_model,
+                inputs=[query],
+                parameters={"input_type": "query"}
+            )
+            query_embedding = result[0]["values"]
+
             results = self.index.query(
                 vector=query_embedding,
                 top_k=n_results,
@@ -129,18 +134,18 @@ class DocumentManager:
     def get_all_documents(self, user_id):
         """Kullanıcıya ait benzersiz dosya isimlerini getirir."""
         try:
+            dummy = self.pc.inference.embed(
+                model=self.embed_model,
+                inputs=["_"],
+                parameters={"input_type": "query"}
+            )
             results = self.index.query(
-                vector=[0.0] * 384,
+                vector=dummy[0]["values"],
                 top_k=1000,
                 filter={"owner": {"$eq": user_id}},
                 include_metadata=True
             )
-            unique_docs = set()
-            for match in results["matches"]:
-                filename = match["metadata"].get("filename", "")
-                if filename:
-                    unique_docs.add(filename)
-            return list(unique_docs)
+            return list({m["metadata"].get("filename", "") for m in results["matches"] if m["metadata"].get("filename")})
         except Exception as e:
             print(f"Hafıza okuma hatası: {e}")
             return []
