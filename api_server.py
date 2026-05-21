@@ -137,7 +137,12 @@ def chat_with_bot(request: ChatRequest):
 # PDF Yükleme Köprüsü
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel")):
-    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".txt"}
+    ALLOWED_EXTENSIONS = {
+        ".pdf", ".docx", ".xlsx", ".txt",
+        ".py", ".js", ".ts", ".html", ".css", ".java", ".cpp", ".c",
+        ".cs", ".php", ".rb", ".go", ".rs", ".swift", ".kt", ".json",
+        ".xml", ".yaml", ".yml", ".md", ".sh", ".bat"
+    }
     ext = os.path.splitext(file.filename)[1].lower()
 
     if ext not in ALLOWED_EXTENSIONS:

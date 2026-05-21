@@ -43,9 +43,16 @@ class DocumentManager:
             return text
 
         elif ext == ".docx":
-            import docx
-            doc = docx.Document(file_path)
-            return "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+            from docx import Document
+            doc = Document(file_path)
+            text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+            # Tablolardaki metni de okuyalım
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            text += "\n" + cell.text.strip()
+            return text
 
         elif ext == ".xlsx":
             import openpyxl
@@ -62,6 +69,14 @@ class DocumentManager:
         elif ext == ".txt":
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 return f.read()
+
+        elif ext in {".py", ".js", ".ts", ".html", ".css", ".java", ".cpp", ".c",
+                     ".cs", ".php", ".rb", ".go", ".rs", ".swift", ".kt", ".json",
+                     ".xml", ".yaml", ".yml", ".md", ".sh", ".bat"}:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            # Dosya adını ve dilini bağlama ekle ki bot daha iyi anlasın
+            return f"[Dosya: {os.path.basename(file_path)}]\n\n{content}"
 
         else:
             raise ValueError(f"Desteklenmeyen dosya formatı: {ext}")
