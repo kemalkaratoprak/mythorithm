@@ -81,6 +81,14 @@ class DocumentManager:
         else:
             raise ValueError(f"Desteklenmeyen dosya formatı: {ext}")
 
+    def sanitize_id(self, text):
+        """Türkçe ve özel karakterleri ASCII'ye çevirir."""
+        import unicodedata
+        normalized = unicodedata.normalize("NFKD", text)
+        ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+        # Boşluk ve özel karakterleri alt çizgiye çevir
+        return "".join(c if c.isalnum() or c in "-_." else "_" for c in ascii_text)
+
     def add_document(self, file_path, user_id):
         """Dosyayı okur, parçalar, vektöre çevirir ve Pinecone'a ekler."""
         text = self.read_file(file_path)
@@ -95,7 +103,7 @@ class DocumentManager:
         vectors = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             vectors.append({
-                "id": f"{user_id}_{os.path.basename(file_path)}_chunk_{i}",
+                "id": f"{self.sanitize_id(user_id)}_{self.sanitize_id(os.path.basename(file_path))}_chunk_{i}",
                 "values": embedding,
                 "metadata": {
                     "owner": user_id,
