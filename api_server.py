@@ -225,6 +225,10 @@ def reset_chat_history():
 app.mount("/static", StaticFiles(directory="."), name="static")
 
 # Ana sayfa — index.html'i döndür
-@app.get("/app")
+@app.get("/")
 def serve_frontend():
+    return FileResponse("index.html")
+
+@app.get("/app")
+def serve_frontend_app():
     return FileResponse("index.html")
