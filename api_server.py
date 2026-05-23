@@ -12,6 +12,15 @@ from document_loader import DocumentManager
 
 app = FastAPI(title="Mythorithm API")
 
+
+@app.get("/robots.txt", include_in_schema=False)
+async def get_robots():
+    return FileResponse("robots.txt")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def get_sitemap():
+    return FileResponse("sitemap.xml")
+
 # --- POSTGRESQL VERİTABANI AYARLARI ---
 def get_conn():
     """Railway'in otomatik sağladığı DATABASE_URL ile bağlantı kurar."""
