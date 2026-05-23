@@ -617,6 +617,12 @@
                 if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
                 addMessage(data.response, "bot-wrapper", "bot-msg");
                 
+                // Cevap kod bloğu içeriyorsa indirme butonu ekle
+                const codeMatch = data.response.match(/```(\w+)?\n([\s\S]*?)```/);
+                if (codeMatch) {
+                    addDownloadButton(codeMatch[2], codeMatch[1] || "txt");
+                }
+                
                 saveChatToLocal();
                 speakText(data.response); 
             } catch (error) {
@@ -660,6 +666,62 @@
         function scrollToBottom() {
             const chatBoxEl = document.getElementById("chatBox");
             if (chatBoxEl) chatBoxEl.scrollTop = chatBoxEl.scrollHeight;
+        }
+
+        // Dil → uzantı eşleştirme
+        const langToExt = {
+            python: "py", py: "py",
+            javascript: "js", js: "js",
+            typescript: "ts", ts: "ts",
+            html: "html", css: "css",
+            java: "java", cpp: "cpp", c: "c",
+            csharp: "cs", cs: "cs",
+            php: "php", ruby: "rb", rb: "rb",
+            go: "go", rust: "rs", rs: "rs",
+            swift: "swift", kotlin: "kt", kt: "kt",
+            json: "json", xml: "xml",
+            yaml: "yaml", yml: "yml",
+            markdown: "md", md: "md",
+            bash: "sh", sh: "sh", bat: "bat",
+            sql: "sql", txt: "txt"
+        };
+
+        function addDownloadButton(content, lang) {
+            const chatBoxEl = document.getElementById("chatBox");
+            if (!chatBoxEl) return;
+
+            const ext = langToExt[lang.toLowerCase()] || "txt";
+            const filename = `mythorithm_output.${ext}`;
+
+            const wrapperDiv = document.createElement("div");
+            wrapperDiv.className = "message-wrapper bot-wrapper";
+            wrapperDiv.innerHTML = `
+                <div class="avatar-mini">M</div>
+                <div>
+                    <button onclick="downloadFile(this)" 
+                        data-content="${encodeURIComponent(content)}"
+                        data-filename="${filename}"
+                        style="background: transparent; border: 1px solid #C9A84C; color: #C9A84C; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: 0.3s; margin-top: 4px;"
+                        onmouseover="this.style.background='rgba(201,168,76,0.15)'"
+                        onmouseout="this.style.background='transparent'">
+                        <i class="fa-solid fa-download"></i> ${filename} olarak indir
+                    </button>
+                </div>
+            `;
+            chatBoxEl.appendChild(wrapperDiv);
+            scrollToBottom();
+        }
+
+        function downloadFile(btn) {
+            const content = decodeURIComponent(btn.dataset.content);
+            const filename = btn.dataset.filename;
+            const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         // --- YAN PANELLERİ (SIDEBARS) KAPATMA ORTAK FONKSİYONU ---
