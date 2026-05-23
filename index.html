@@ -669,6 +669,10 @@
             if (chatBoxEl) chatBoxEl.scrollTop = chatBoxEl.scrollHeight;
         }
 
+        function openPrivacyPolicy() {
+            document.getElementById('privacyModal').style.display = 'block';
+        }
+
         // Dil → uzantı eşleştirme
         const langToExt = {
             python: "py", py: "py",
@@ -987,5 +991,42 @@
             } catch (e) { alert("Sunucu bağlantı hatası!"); }
         }
     </script>
+
+    <!-- FOOTER -->
+    <div style="text-align: center; padding: 6px; font-size: 11px; color: #4a5568; position: fixed; bottom: 0; left: 0; right: 0; pointer-events: none; z-index: 1;">
+        © 2026 Mythorithm · Developed by <span style="color: #7C5CBF;">Kemal Karatoprak</span> · 
+        <span onclick="openPrivacyPolicy()" style="cursor: pointer; pointer-events: all; text-decoration: underline; color: #4a5568;">Gizlilik & Çerez Politikası</span>
+    </div>
+
+    <!-- GİZLİLİK & ÇEREZ POLİTİKASI MODAL -->
+    <div id="privacyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto;">
+        <div style="background:#0A1628; border:1px solid #7C5CBF; border-radius:12px; max-width:600px; margin:40px auto; padding:32px; color:#E8F4FD; position:relative;">
+            <button onclick="document.getElementById('privacyModal').style.display='none'" 
+                style="position:absolute; top:16px; right:16px; background:transparent; border:none; color:#E8F4FD; font-size:20px; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 style="color:#C9A84C; margin-bottom:20px;"><i class="fa-solid fa-shield-halved"></i> Gizlilik & Çerez Politikası</h2>
+            
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">1. Toplanan Veriler</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Mythorithm, kullanıcı adı ve şifrenizi yalnızca giriş doğrulaması amacıyla saklar. Yüklediğiniz belgeler, yalnızca sizin sorularınıza yanıt vermek için kullanılır ve başkalarıyla paylaşılmaz.</p>
+
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">2. Çerezler</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Mythorithm, oturum bilgilerinizi ve sohbet geçmişinizi tarayıcınızın yerel depolama alanında (localStorage) saklar. Bu veriler yalnızca cihazınızda bulunur ve sunucuya gönderilmez.</p>
+
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">3. Üçüncü Taraf Hizmetler</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Uygulama; Groq (yapay zeka), Pinecone (vektör hafıza) ve Supabase (veritabanı) hizmetlerini kullanmaktadır. Bu hizmetler kendi gizlilik politikalarına tabidir.</p>
+
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">4. Veri Güvenliği</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Verileriniz şifrelenmemiş olarak saklanmaktadır. Hassas kişisel bilgilerinizi platforma yüklemenizi önermiyoruz.</p>
+
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">5. İletişim</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Sorularınız için: <span style="color:#C9A84C;">mythorithm.com.tr</span></p>
+
+            <div style="margin-top:24px; text-align:center; font-size:12px; color:#4a5568;">
+                Son güncelleme: Mayıs 2025 · Geliştirici: Kemal Karatoprak
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
