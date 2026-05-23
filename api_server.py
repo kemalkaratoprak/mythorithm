@@ -29,8 +29,9 @@ def veritabanini_hazirla():
         )
     """)
 
-    # Başlangıç test kullanıcıları (yoksa ekle)
-    test_kullanicilari = [("kemal", "123456"), ("yusuf", "ayse2026"), ("admin", "mythorithm99")]
+    # Başlangıç kullanıcıları — şifreler environment variable'dan okunuyor
+    admin_pass = os.environ.get("ADMIN_PASSWORD", "admin123")
+    test_kullanicilari = [("admin", admin_pass)]
     for user, target_pass in test_kullanicilari:
         cursor.execute("""
             INSERT INTO users (username, password)
@@ -75,8 +76,16 @@ class ChatRequest(BaseModel):
 
 # --- KÖPRÜLER (ENDPOINTS) ---
 
-# Kök Dizin
+# Ana sayfa
 @app.get("/")
+def serve_frontend():
+    return FileResponse("index.html")
+
+@app.get("/app")
+def serve_frontend_app():
+    return FileResponse("index.html")
+
+@app.get("/status")
 def read_root():
     return {"durum": "aktif", "sistem": "Mythorithm API Çalışıyor"}
 
@@ -223,12 +232,3 @@ def reset_chat_history():
 
 # avatar_logo.png gibi statik dosyaları serve et
 app.mount("/static", StaticFiles(directory="."), name="static")
-
-# Ana sayfa — index.html'i döndür
-@app.get("/")
-def serve_frontend():
-    return FileResponse("index.html")
-
-@app.get("/app")
-def serve_frontend_app():
-    return FileResponse("index.html")
