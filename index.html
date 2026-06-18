@@ -238,7 +238,7 @@
         }
         
         .sidebar {
-            position: fixed; top: 0; right: -400px; width: 350px; height: 100vh;
+            position: fixed; top: 0; right: -100%; width: 350px; height: 100vh;
             background-color: #0A0E1A; border-left: 1px solid #7C5CBF;
             z-index: 1000; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex; flex-direction: column;
@@ -269,6 +269,111 @@
         .doc-icon { font-size: 24px; color: #E74C3C; }
         .doc-name { font-size: 14px; color: #E8F4FD; word-break: break-all; }
         .empty-memory { text-align: center; color: #6B7280; font-style: italic; margin-top: 50px; }
+        /* ==========================================
+        📱 MOBİL RESPONSIVE AYARLARI (768px altı)
+        ========================================== */
+        @media screen and (max-width: 768px) {
+            /* HEADER KISMI */
+            .header { padding: 10px 12px; }
+            .header-right { gap: 6px; }
+            .tagline { display: none; }
+            .title-area h1 { font-size: 17px; }
+            .logo-circle { width: 36px; height: 36px; font-size: 16px; }
+            .header-left { gap: 8px; }
+            
+            /* HEADER BUTONLARI — sadece ikon */
+            .memory-btn { 
+                font-size: 0;
+                padding: 8px 10px; 
+                gap: 0;
+            }
+            .memory-btn i { 
+                font-size: 15px;
+                margin: 0;
+            }
+
+            /* GİRİŞ EKRANI */
+            #loginScreen > div {
+                width: 88% !important; 
+                padding: 28px 20px !important;
+                box-sizing: border-box !important;
+            }
+
+            /* ALT GİRDİ PANELİ */
+            .input-panel {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+            
+            /* GÖNDER VE PDF BUTONLARI — yuvarlak ikon */
+            .send-btn, .pdf-btn {
+                font-size: 0; 
+                padding: 0;
+                width: 46px;
+                min-width: 46px;
+                flex-shrink: 0;
+                justify-content: center;
+            }
+            .send-btn i, .pdf-btn i {
+                font-size: 16px; 
+                margin: 0;
+            }
+
+            /* MİKROFON BUTONU */
+            #micBtn {
+                padding: 0 8px;
+                font-size: 18px;
+                flex-shrink: 0;
+            }
+
+            /* YAN PANELLER — tam ekran */
+            .sidebar { width: 100%; }
+            
+            /* MESAJ BALONLARI */
+            .chat-container { 
+                padding: 12px 4%;
+                gap: 14px;
+            }
+            .message-wrapper { max-width: 95%; }
+            .message { font-size: 14px; padding: 11px 14px; }
+
+            /* AYARLAR MODAL — mobilde taşmasın */
+            #settingsModal {
+                width: 90% !important;
+                max-width: 340px !important;
+                padding: 20px !important;
+                box-sizing: border-box !important;
+            }
+
+            /* GİZLİLİK POLİTİKASI MODAL */
+            #privacyModal > div {
+                margin: 20px auto !important;
+                padding: 20px !important;
+                width: 90% !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* FOOTER GİZLE — klavye açıkken üste binmesin */
+            div[style*="text-align: center; padding: 10px; font-size: 13px;"] {
+                display: none !important;
+            }
+        }
+
+        /* ==========================================
+        📱 ÇOK KÜÇÜK EKRANLAR (400px altı)
+        ========================================== */
+        @media screen and (max-width: 400px) {
+            .title-area h1 { font-size: 15px; }
+            .status { font-size: 10px; }
+            .header { padding: 8px 10px; }
+            .input-panel { padding: 8px 10px; gap: 6px; }
+            .send-btn, .pdf-btn {
+                width: 42px;
+                min-width: 42px;
+                height: 42px;
+            }
+            input[type="text"] { font-size: 14px; padding: 0 14px; height: 42px; }
+        }
     </style>
 </head>
 <body>
@@ -359,7 +464,7 @@
 
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebars()"></div>
     
-    <div class="sidebar" id="chatSidebar" style="left: -350px; right: auto; border-left: none; border-right: 1px solid #7C5CBF;">
+    <div class="sidebar" id="chatSidebar" style="left: -100%; right: auto; border-left: none; border-right: 1px solid #7C5CBF;">
         <div class="sidebar-header">
             <h2><i class="fa-regular fa-comments"></i> Sohbet Geçmişi</h2>
             <button class="close-btn" onclick="closeSidebars()"><i class="fa-solid fa-xmark"></i></button>
@@ -762,9 +867,9 @@
             const chatSidebar = document.getElementById('chatSidebar'); // YENİ EKLENDİ
             
             if (overlay) overlay.style.opacity = '0';
-            if (memorySidebar) memorySidebar.style.right = '-400px';
-            if (adminSidebar) adminSidebar.style.right = '-400px';
-            if (chatSidebar) chatSidebar.style.left = '-400px'; // YENİ EKLENDİ (Soldan kapansın diye)
+            if (memorySidebar) memorySidebar.style.right = '-100%';
+            if (adminSidebar) adminSidebar.style.right = '-100%';
+            if (chatSidebar) chatSidebar.style.left = '-100%'; // YENİ EKLENDİ (Soldan kapansın diye)
             
             setTimeout(() => { if(overlay) overlay.style.display = 'none'; }, 300);
         }
