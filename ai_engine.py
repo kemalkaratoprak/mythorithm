@@ -1,4 +1,5 @@
 import os
+import base64
 from groq import Groq
 
 class AIBot:
@@ -122,3 +123,31 @@ Kullanıcının veritabanından gelen ek bilgiler (Bağlam):
 
         except Exception as e:
             return f"Bir hata oluştu: {e}"
+
+    def analyze_image(self, image_path, user_prompt="Bu görselde neler olduğunu detaylı bir şekilde açıkla.", temperature=0.7):
+        """Groq'un görsel destekli modeliyle (qwen3.6-27b) bir resmi analiz eder."""
+        try:
+            with open(image_path, "rb") as img_file:
+                base64_image = base64.b64encode(img_file.read()).decode("utf-8")
+
+            ext = os.path.splitext(image_path)[1].lower().replace(".", "")
+            mime = "jpeg" if ext == "jpg" else ext
+
+            response = self.client.chat.completions.create(
+                model="qwen/qwen3.6-27b",  # Groq'un görsel destekli (multimodal) modeli
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/{mime};base64,{base64_image}"}}
+                        ]
+                    }
+                ],
+                temperature=temperature,
+                max_tokens=1024
+            )
+            return response.choices[0].message.content
+
+        except Exception as e:
+            return f"Görsel analiz edilirken bir hata oluştu: {e}"

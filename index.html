@@ -524,7 +524,7 @@
     </div>
 
     <div class="input-panel">
-        <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.txt,.py,.js,.ts,.html,.css,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.swift,.kt,.json,.xml,.yaml,.yml,.md,.sh,.bat">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.txt,.py,.js,.ts,.html,.css,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.swift,.kt,.json,.xml,.yaml,.yml,.md,.sh,.bat,.jpg,.jpeg,.png,.webp,.gif">
         <button class="pdf-btn" onclick="document.getElementById('fileInput').click()">
             <i class="fa-solid fa-paperclip"></i> PDF
         </button>
@@ -914,12 +914,25 @@
             const fileName = file.name;
             const chatBox = document.getElementById("chatBox");
             const thinkingIndicator = document.getElementById("thinkingIndicator");
+            const ext = "." + fileName.split(".").pop().toLowerCase();
+            const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext);
 
             const qsCardsUpload = document.getElementById("quickStartCards");
             if (qsCardsUpload) qsCardsUpload.remove();
 
-            addMessage(`📎 Yükleniyor: ${fileName}...`, "user-wrapper", "user-msg");
-            saveConversationToServer();
+            if (isImage) {
+                // Görseli kullanıcı mesajı olarak küçük bir önizlemeyle göster
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const imgHtml = `<img src="${e.target.result}" style="max-width:220px; border-radius:10px; display:block; margin-top:6px;">`;
+                    addMessage(`📎 ${fileName}${imgHtml}`, "user-wrapper", "user-msg");
+                    saveConversationToServer();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                addMessage(`📎 Yükleniyor: ${fileName}...`, "user-wrapper", "user-msg");
+                saveConversationToServer();
+            }
 
             if (thinkingIndicator && chatBox) {
                 thinkingIndicator.style.display = "block";
@@ -941,7 +954,11 @@
                 if (thinkingIndicator) thinkingIndicator.style.display = "none";
 
                 if (data.status === "success") {
-                    addMessage(`✅ Harika! '${fileName}' başarıyla okundu ve vektörel hafızama aktarıldı.`, "bot-wrapper", "bot-msg");
+                    if (data.type === "image") {
+                        addMessage(`🖼️ ${data.message}`, "bot-wrapper", "bot-msg");
+                    } else {
+                        addMessage(`✅ Harika! '${fileName}' başarıyla okundu ve vektörel hafızama aktarıldı.`, "bot-wrapper", "bot-msg");
+                    }
                 } else {
                     addMessage(`❌ Yükleme hatası: ${data.message}`, "bot-wrapper", "bot-msg");
                 }

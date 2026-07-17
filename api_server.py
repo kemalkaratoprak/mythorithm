@@ -3,8 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
 import shutil
 import os
+
+# Yerelde ".env" dosyası varsa oradan okur; Render'da zaten panelden
+# ayarlanan gerçek ortam değişkenleri kullanıldığı için bu satır orada etkisiz kalır.
+load_dotenv()
+
 import json
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -175,19 +181,22 @@ def chat_with_bot(request: ChatRequest):
     cevap = bot_motoru.ask(request.message, temperature=request.temperature, user_id=request.user_id)
     return {"response": cevap}
 
-# PDF Yükleme Köprüsü
+# PDF/Belge/Görsel Yükleme Köprüsü
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel")):
-    ALLOWED_EXTENSIONS = {
+    DOCUMENT_EXTENSIONS = {
         ".pdf", ".docx", ".xlsx", ".txt",
         ".py", ".js", ".ts", ".html", ".css", ".java", ".cpp", ".c",
         ".cs", ".php", ".rb", ".go", ".rs", ".swift", ".kt", ".json",
         ".xml", ".yaml", ".yml", ".md", ".sh", ".bat"
     }
+    ALLOWED_EXTENSIONS = DOCUMENT_EXTENSIONS | IMAGE_EXTENSIONS
     ext = os.path.splitext(file.filename)[1].lower()
 
     if ext not in ALLOWED_EXTENSIONS:
-        return {"status": "error", "message": f"Desteklenmeyen dosya formatı: {ext}. İzin verilenler: PDF, DOCX, XLSX, TXT"}
+        return {"status": "error", "message": f"Desteklenmeyen dosya formatı: {ext}. İzin verilenler: PDF, DOCX, XLSX, TXT ve JPG/PNG/WEBP/GIF gibi görseller."}
 
     print(f"Dosya alınıyor: {file.filename} (Sahibi: {user_id})")
     file_path = file.filename
@@ -196,9 +205,23 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel"))
         with open(file_path, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
-        kutuphaneci.add_document(file_path, user_id=user_id)
-        os.remove(file_path)
-        return {"status": "success", "message": f"'{file.filename}' başarıyla vektörel hafızaya eklendi!"}
+        if ext in IMAGE_EXTENSIONS:
+            # Görsel: Groq'un vision modeliyle analiz et
+            aciklama = bot_motoru.analyze_image(file_path)
+
+            # Analiz sonucunu ileride "bu görselde ne vardı?" diye sorabilmek için hafızaya da ekle
+            try:
+                kutuphaneci.add_text_document(aciklama, filename=file.filename, user_id=user_id)
+            except Exception as memory_error:
+                print(f"Görsel hafızaya eklenemedi (analiz yine de döndürülüyor): {memory_error}")
+
+            os.remove(file_path)
+            return {"status": "success", "type": "image", "message": aciklama}
+
+        else:
+            kutuphaneci.add_document(file_path, user_id=user_id)
+            os.remove(file_path)
+            return {"status": "success", "type": "document", "message": f"'{file.filename}' başarıyla vektörel hafızaya eklendi!"}
 
     except Exception as e:
         print(f"Yükleme sırasında hata: {e}")

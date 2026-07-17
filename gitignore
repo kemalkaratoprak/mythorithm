@@ -1,0 +1,28 @@
+# --- GİZLİ / HASSAS DOSYALAR ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# --- EDİTÖR / İŞLETİM SİSTEMİ ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- LOG DOSYALARI ---
+*.log

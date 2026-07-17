@@ -95,6 +95,19 @@ class DocumentManager:
         if not text.strip():
             raise ValueError("Dosyadan metin okunamadı veya dosya boş.")
 
+        self._index_text(text, os.path.basename(file_path), user_id)
+        print(f"Sistem: {os.path.basename(file_path)} dosyası {user_id} hafızasına kaydedildi.")
+
+    def add_text_document(self, text, filename, user_id):
+        """Bir dosyadan değil, doğrudan hazır bir metinden (örn. görsel analiz sonucu) hafızaya ekler."""
+        if not text or not text.strip():
+            raise ValueError("Eklenecek metin boş.")
+
+        self._index_text(text, filename, user_id)
+        print(f"Sistem: {filename} (görsel analizi) {user_id} hafızasına kaydedildi.")
+
+    def _index_text(self, text, filename, user_id):
+        """Verilen metni parçalayıp vektöre çevirir ve Pinecone'a ekler. Ortak indexleme mantığı."""
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_text(text)
 
@@ -103,20 +116,18 @@ class DocumentManager:
         vectors = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             vectors.append({
-                "id": f"{self.sanitize_id(user_id)}_{self.sanitize_id(os.path.basename(file_path))}_chunk_{i}",
+                "id": f"{self.sanitize_id(user_id)}_{self.sanitize_id(filename)}_chunk_{i}",
                 "values": embedding,
                 "metadata": {
                     "owner": user_id,
                     "text": chunk,
-                    "filename": os.path.basename(file_path)
+                    "filename": filename
                 }
             })
 
         batch_size = 100
         for i in range(0, len(vectors), batch_size):
             self.index.upsert(vectors=vectors[i:i + batch_size])
-
-        print(f"Sistem: {os.path.basename(file_path)} dosyası {user_id} hafızasına kaydedildi.")
 
     def search_memory(self, query, user_id, n_results=3):
         """Kullanıcıya ait belgeler arasında arama yapar."""
