@@ -152,6 +152,46 @@
         }
         .gundem-track:hover { animation-play-state: paused; }
 
+        /* HIZLI BAŞLANGIÇ KARTLARI */
+        .quick-start-cards {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            max-width: 640px;
+            margin: 4px 0 0 55px; /* avatar genişliğiyle hizalı */
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .qs-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(201, 168, 76, 0.25);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.25s;
+        }
+        .qs-card:hover {
+            background: rgba(201, 168, 76, 0.08);
+            border-color: #C9A84C;
+            transform: translateY(-2px);
+        }
+        .qs-card i {
+            color: #C9A84C;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        .qs-card span {
+            color: #E8F4FD;
+            font-size: 13.5px;
+            line-height: 1.4;
+        }
+        @media (max-width: 600px) {
+            .quick-start-cards { grid-template-columns: 1fr; margin-left: 0; }
+        }
+
         /* SOHBET ALANI */
         .chat-container {
             flex: 1;
@@ -480,15 +520,6 @@
     </div>
 
     <div class="chat-container" id="chatBox">
-        <div class="message-wrapper bot-wrapper" id="defaultWelcomeMessage">
-            <div class="avatar-mini">M</div>
-            <div>
-                <div class="message bot-msg">
-                    Merhaba! Ben Mythorithm. Yazılım, kod ve teknik konularda sana yardımcı olmak için buradayım. Efsane başlıyor. ✨
-                </div>
-                <div class="time-stamp" id="first-msg-time"></div>
-            </div>
-        </div>
         <div class="thinking" id="thinkingIndicator">Mythorithm düşünüyor <i class="fa-solid fa-circle-notch fa-spin"></i></div>
     </div>
 
@@ -577,12 +608,6 @@
 
         // Sayfa Yükleme Kontrolleri
         window.addEventListener("DOMContentLoaded", () => {
-            const now = new Date();
-            const firstMsgTime = document.getElementById('first-msg-time');
-            if (firstMsgTime) {
-                firstMsgTime.innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            }
-
             // Gündem şeridi — giriş yapılmasa bile herkese açık, hemen yükle
             loadGundem();
             setInterval(loadGundem, 15 * 60 * 1000); // 15 dakikada bir tazele
@@ -620,7 +645,10 @@
         function saveConversationToServer() {
             if (!currentUser || currentMessages.length === 0) return;
 
-            const title = currentMessages[0].content.slice(0, 40);
+            // Başlık için hoş geldin mesajını değil, ilk KULLANICI mesajını kullan
+            const firstUserMsg = currentMessages.find(m => m.role === "user");
+            const titleSource = firstUserMsg ? firstUserMsg.content : currentMessages[0].content;
+            const title = titleSource.slice(0, 40);
 
             fetch(`${API_BASE}/conversations/save`, {
                 method: "POST",
@@ -641,7 +669,7 @@
             .catch(err => console.warn("Sohbet kaydedilemedi:", err));
         }
 
-        // Kullanıcı giriş yaptığında en son sohbeti getirir (yoksa hoş geldin mesajı gösterir)
+        // Kullanıcı giriş yaptığında en son sohbeti getirir (yoksa boş sohbet ekranını gösterir)
         async function loadLatestConversation() {
             if (!currentUser) return;
             try {
@@ -650,11 +678,58 @@
                 if (data.status === "success" && data.conversations.length > 0) {
                     await loadConversation(data.conversations[0].id);
                 } else {
-                    addMessage(`👋 Hoş geldin ${currentUser}! Seninle çalışmaya hazırım.`, "bot-wrapper", "bot-msg");
+                    renderEmptyChatState();
                 }
             } catch (error) {
                 console.warn("Sohbet geçmişi yüklenemedi:", error);
+                renderEmptyChatState();
             }
+        }
+
+        // Boş/yeni sohbet ekranı: hoş geldin mesajı + hızlı başlangıç kartları
+        // NOT: addMessage() KULLANMAZ — bu içerik currentMessages'a (dolayısıyla backend'e) karışmaz
+        function renderEmptyChatState() {
+            const chatBox = document.getElementById("chatBox");
+            if (!chatBox) return;
+
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+
+            chatBox.innerHTML = `
+                <div class="message-wrapper bot-wrapper">
+                    <div class="avatar-mini">M</div>
+                    <div>
+                        <div class="message bot-msg">Merhaba! Ben Mythorithm. Yazılım, kod ve teknik konularda sana yardımcı olmak için buradayım. Efsane başlıyor. ✨</div>
+                        <div class="time-stamp">${timeStr}</div>
+                    </div>
+                </div>
+                <div class="quick-start-cards" id="quickStartCards">
+                    <div class="qs-card" onclick="useQuickStart('Yüklediğim belgeyi kısaca özetler misin?')">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>Bir belgeyi özetle</span>
+                    </div>
+                    <div class="qs-card" onclick="useQuickStart('Bu kodda neden hata aldığımı bulmama yardım eder misin?')">
+                        <i class="fa-solid fa-bug"></i>
+                        <span>Kodda hata ayıkla</span>
+                    </div>
+                    <div class="qs-card" onclick="useQuickStart('Python ile basit bir REST API örneği yazar mısın?')">
+                        <i class="fa-solid fa-code"></i>
+                        <span>Kod örneği iste</span>
+                    </div>
+                    <div class="qs-card" onclick="useQuickStart('SQL sorgularımı nasıl optimize edebilirim, örnekle anlatır mısın?')">
+                        <i class="fa-solid fa-database"></i>
+                        <span>Veritabanı yardımı al</span>
+                    </div>
+                </div>
+                <div class="thinking" id="thinkingIndicator">Mythorithm düşünüyor <i class="fa-solid fa-circle-notch fa-spin"></i></div>
+            `;
+        }
+
+        // Bir hızlı başlangıç kartına tıklanınca ilgili soruyu otomatik gönderir
+        function useQuickStart(promptText) {
+            const userInputField = document.getElementById("userInput");
+            if (userInputField) userInputField.value = promptText;
+            sendMessage();
         }
 
         // Sidebar'dan seçilen belirli bir sohbeti chatBox'a yükler
@@ -840,6 +915,9 @@
             const chatBox = document.getElementById("chatBox");
             const thinkingIndicator = document.getElementById("thinkingIndicator");
 
+            const qsCardsUpload = document.getElementById("quickStartCards");
+            if (qsCardsUpload) qsCardsUpload.remove();
+
             addMessage(`📎 Yükleniyor: ${fileName}...`, "user-wrapper", "user-msg");
             saveConversationToServer();
 
@@ -893,6 +971,9 @@
             if (!userInputField) return;
             const messageText = userInputField.value.trim();
             if (!messageText) return;
+
+            const qsCards = document.getElementById("quickStartCards");
+            if (qsCards) qsCards.remove();
 
             addMessage(messageText, "user-wrapper", "user-msg");
             userInputField.value = "";
@@ -1082,9 +1163,8 @@
                 console.warn("reset-chat hatası:", e);
             }
 
-            // Ekrandaki mesajları temizle
-            const chatBox = document.getElementById("chatBox");
-            if (chatBox) chatBox.innerHTML = "";
+            // Ekranı boş sohbet durumuna (hoş geldin + hızlı başlangıç kartları) döndür
+            renderEmptyChatState();
 
             // Aktif sohbet state'ini sıfırla — bir sonraki mesaj yeni bir sohbet olarak kaydedilecek
             currentMessages = [];
