@@ -6,6 +6,9 @@ from pydantic import BaseModel
 import shutil
 import os
 import json
+import urllib.request
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
@@ -323,6 +326,45 @@ def delete_conversation(conversation_id: int, user_id: str):
     cursor.close()
     conn.close()
     return {"status": "success", "message": "Sohbet silindi."}
+
+# ==========================================
+# --- 📰 GÜNDEM ŞERİDİ (Google News RSS - Türkiye) ---
+# ==========================================
+
+_gundem_cache = {"data": [], "timestamp": None}
+
+@app.get("/gundem")
+def get_gundem():
+    global _gundem_cache
+    now = datetime.utcnow()
+
+    # 15 dakikadan taze bir önbellek varsa direkt onu dön (Google'a gereksiz istek atmayalım)
+    if _gundem_cache["timestamp"] and (now - _gundem_cache["timestamp"]) < timedelta(minutes=15):
+        return {"status": "success", "headlines": _gundem_cache["data"]}
+
+    try:
+        url = "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
+            xml_data = response.read()
+
+        root = ET.fromstring(xml_data)
+        headlines = []
+        for item in root.findall(".//item")[:12]:
+            title_el = item.find("title")
+            link_el = item.find("link")
+            if title_el is not None and link_el is not None:
+                headlines.append({"title": title_el.text, "link": link_el.text})
+
+        _gundem_cache = {"data": headlines, "timestamp": now}
+        return {"status": "success", "headlines": headlines}
+
+    except Exception as e:
+        print(f"Gündem çekme hatası: {e}")
+        # Hata durumunda elimizdeki eski önbelleği döndürmeyi dene, o da yoksa boş dön
+        if _gundem_cache["data"]:
+            return {"status": "success", "headlines": _gundem_cache["data"]}
+        return {"status": "error", "message": "Gündem alınamadı.", "headlines": []}
 
 # --- STATİK DOSYALAR VE ARAYÜZ ---
 

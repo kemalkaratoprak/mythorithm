@@ -109,6 +109,49 @@
         }
         .memory-btn:hover { background-color: rgba(201, 168, 76, 0.1); }
 
+        /* GÜNDEM ŞERİDİ (TICKER) */
+        .gundem-ticker {
+            background-color: #0A0E1A;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+            padding: 8px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .gundem-ticker::before {
+            content: "GÜNDEM";
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            background: linear-gradient(90deg, #0A0E1A 70%, transparent);
+            color: #C9A84C;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 2;
+        }
+        .gundem-track {
+            display: inline-block;
+            padding-left: 100%;
+            animation: gundem-scroll 60s linear infinite;
+        }
+        .gundem-track a {
+            color: #a0aec0;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        .gundem-track a:hover { color: #C9A84C; }
+        .gundem-sep { color: #4B5563; margin: 0 18px; }
+        @keyframes gundem-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100%); }
+        }
+        .gundem-track:hover { animation-play-state: paused; }
+
         /* SOHBET ALANI */
         .chat-container {
             flex: 1;
@@ -432,6 +475,10 @@
         </div>
     </div>
 
+    <div class="gundem-ticker" id="gundemTicker">
+        <span class="gundem-track" id="gundemTrack">Gündem yükleniyor...</span>
+    </div>
+
     <div class="chat-container" id="chatBox">
         <div class="message-wrapper bot-wrapper" id="defaultWelcomeMessage">
             <div class="avatar-mini">M</div>
@@ -535,6 +582,10 @@
             if (firstMsgTime) {
                 firstMsgTime.innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
             }
+
+            // Gündem şeridi — giriş yapılmasa bile herkese açık, hemen yükle
+            loadGundem();
+            setInterval(loadGundem, 15 * 60 * 1000); // 15 dakikada bir tazele
 
             if (currentUser) {
                 const loginScreen = document.getElementById("loginScreen");
@@ -755,6 +806,27 @@
                 }
             } catch (error) {
                 alert("❌ Sunucu bağlantı hatası! API açık mı?");
+            }
+        }
+
+        // --- GÜNDEM ŞERİDİ (Google News RSS - backend üzerinden) ---
+        async function loadGundem() {
+            const track = document.getElementById("gundemTrack");
+            if (!track) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/gundem`);
+                const data = await response.json();
+
+                if (data.status === "success" && data.headlines.length > 0) {
+                    track.innerHTML = data.headlines.map(h =>
+                        `<a href="${h.link}" target="_blank" rel="noopener noreferrer">${h.title}</a>`
+                    ).join('<span class="gundem-sep">•</span>');
+                } else {
+                    track.innerText = "Gündem şu anda alınamıyor.";
+                }
+            } catch (error) {
+                track.innerText = "Gündem yüklenirken bağlantı hatası oluştu.";
             }
         }
 
