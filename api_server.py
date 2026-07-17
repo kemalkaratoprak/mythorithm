@@ -12,9 +12,7 @@ import os
 load_dotenv()
 
 import json
-import urllib.request
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+import random
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
@@ -351,43 +349,52 @@ def delete_conversation(conversation_id: int, user_id: str):
     return {"status": "success", "message": "Sohbet silindi."}
 
 # ==========================================
-# --- 📰 GÜNDEM ŞERİDİ (Google News RSS - Türkiye) ---
+# --- 💻 GÜNLÜK YAZILIMCI SÖZLERİ ---
 # ==========================================
 
-_gundem_cache = {"data": [], "timestamp": None}
+YAZILIMCI_SOZLERI = [
+    "Bugün o commit'i atacaksın!",
+    "StackOverflow olmasaydı şu an nerede olurdun?",
+    "'Çalışıyor ama neden çalıştığını bilmiyorum' da bir başarıdır.",
+    "Kod yazmak kolaydır, kodu anlamak zordur — özellikle kendi kodun 6 ay sonra.",
+    "Bug değil, dokümante edilmemiş özellik.",
+    "Bir değişkene 'temp' adını verdiysen, o kalıcı olacak demektir.",
+    "En iyi debug aracı: 'print' ve umut.",
+    "Bugün derlenmezse, yarın senin sorunun olacak.",
+    "'Sadece küçük bir değişiklik' dedin, 3 saat oldu.",
+    "Git commit mesajın 'fix' ise, gerçekten neyi düzelttiğini sen de bilmiyorsun.",
+    "Kahve bitti mi, sprint de biter.",
+    "Production'da çalışıyorsa dokunma, nasıl çalıştığını sorma.",
+    "İyi bir yazılımcı, iyi bir Google aramasıdır.",
+    "'Bende çalışıyor' cümlesinin faturasını DevOps öder.",
+    "Bugün yazdığın kod, yarının legacy code'u.",
+    "Değişken isimlerine önem ver, gelecekteki sen sana teşekkür edecek.",
+    "Recursion'ı anlamak için önce recursion'ı anlaman gerekir.",
+    "Her 'TODO' yorumunun bir mezarlığı vardır.",
+    "Bugün bir hata ayıkladın, yarın iki tane daha yaratacaksın.",
+    "'Hızlıca bir hotfix' dedin, prod'u düşürdün.",
+    "console.log() en sadık dostundur.",
+    "Kod review'de sessiz kalmak onay değildir, korkaklıktır.",
+    "Sen 'refactor edeceğim' dedikçe, teknik borç faiziyle büyür.",
+    "İyi isimlendirilmiş bir fonksiyon, bin satır yorumdan iyidir.",
+    "Bugün merge conflict'i çözersen, kahraman sensin.",
+    "'Test yazacağım sonra' dediğin an, o 'sonra' hiç gelmez.",
+    "Ctrl+Z, hayattaki en güvenilir arkadaşın.",
+    "Bir API dokümantasyonu okumadan entegrasyona başlamak, gözü kapalı araba kullanmaktır.",
+    "'Basit bir CRUD' dedin, 2 hafta oldu.",
+    "Bugün kod yazdın, yarın o kodu lanetleyeceksin. Normal.",
+    "Syntax hatası bulmak, treasure hunt'tan zordur bazen.",
+    "İyi bir commit geçmişi, iyi bir günlük gibidir.",
+    "'Sonra optimize ederim' cümlesi, en pahalı cümledir.",
+    "Bir junior'a sabırla açıklamak, sen de öğrenmenin en iyi yoludur.",
+    "Bugün her şey yolunda gidiyorsa, bir şeyi unutmuş olabilirsin."
+]
 
-@app.get("/gundem")
-def get_gundem():
-    global _gundem_cache
-    now = datetime.utcnow()
-
-    # 15 dakikadan taze bir önbellek varsa direkt onu dön (Google'a gereksiz istek atmayalım)
-    if _gundem_cache["timestamp"] and (now - _gundem_cache["timestamp"]) < timedelta(minutes=15):
-        return {"status": "success", "headlines": _gundem_cache["data"]}
-
-    try:
-        url = "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            xml_data = response.read()
-
-        root = ET.fromstring(xml_data)
-        headlines = []
-        for item in root.findall(".//item")[:12]:
-            title_el = item.find("title")
-            link_el = item.find("link")
-            if title_el is not None and link_el is not None:
-                headlines.append({"title": title_el.text, "link": link_el.text})
-
-        _gundem_cache = {"data": headlines, "timestamp": now}
-        return {"status": "success", "headlines": headlines}
-
-    except Exception as e:
-        print(f"Gündem çekme hatası: {e}")
-        # Hata durumunda elimizdeki eski önbelleği döndürmeyi dene, o da yoksa boş dön
-        if _gundem_cache["data"]:
-            return {"status": "success", "headlines": _gundem_cache["data"]}
-        return {"status": "error", "message": "Gündem alınamadı.", "headlines": []}
+@app.get("/motivasyon")
+def get_motivasyon():
+    # Her istekte listeyi karıştırıp bir kısmını dön — ticker'da tekrar tekrar çeşitlilik olsun
+    secilenler = random.sample(YAZILIMCI_SOZLERI, k=min(12, len(YAZILIMCI_SOZLERI)))
+    return {"status": "success", "sozler": secilenler}
 
 # --- STATİK DOSYALAR VE ARAYÜZ ---
 

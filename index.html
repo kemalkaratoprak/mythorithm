@@ -109,8 +109,8 @@
         }
         .memory-btn:hover { background-color: rgba(201, 168, 76, 0.1); }
 
-        /* GÜNDEM ŞERİDİ (TICKER) */
-        .gundem-ticker {
+        /* GÜNLÜK YAZILIMCI SÖZLERİ (TICKER) */
+        .motivasyon-ticker {
             background-color: #0A0E1A;
             border-bottom: 1px solid rgba(201, 168, 76, 0.3);
             padding: 8px 0;
@@ -119,8 +119,8 @@
             position: relative;
             flex-shrink: 0;
         }
-        .gundem-ticker::before {
-            content: "GÜNDEM";
+        .motivasyon-ticker::before {
+            content: "GÜNÜN SÖZÜ";
             position: absolute;
             left: 0; top: 0; bottom: 0;
             display: flex;
@@ -133,24 +133,21 @@
             letter-spacing: 1px;
             z-index: 2;
         }
-        .gundem-track {
+        .motivasyon-track {
             display: inline-block;
             padding-left: 100%;
-            animation: gundem-scroll 60s linear infinite;
+            animation: motivasyon-scroll 60s linear infinite;
         }
-        .gundem-track a {
+        .motivasyon-item {
             color: #a0aec0;
-            text-decoration: none;
             font-size: 13px;
-            transition: color 0.2s;
         }
-        .gundem-track a:hover { color: #C9A84C; }
-        .gundem-sep { color: #4B5563; margin: 0 18px; }
-        @keyframes gundem-scroll {
+        .motivasyon-sep { color: #4B5563; margin: 0 18px; }
+        @keyframes motivasyon-scroll {
             from { transform: translateX(0); }
             to { transform: translateX(-100%); }
         }
-        .gundem-track:hover { animation-play-state: paused; }
+        .motivasyon-track:hover { animation-play-state: paused; }
 
         /* HIZLI BAŞLANGIÇ KARTLARI */
         .quick-start-cards {
@@ -515,8 +512,8 @@
         </div>
     </div>
 
-    <div class="gundem-ticker" id="gundemTicker">
-        <span class="gundem-track" id="gundemTrack">Gündem yükleniyor...</span>
+    <div class="motivasyon-ticker" id="motivasyonTicker">
+        <span class="motivasyon-track" id="motivasyonTrack">Yükleniyor...</span>
     </div>
 
     <div class="chat-container" id="chatBox">
@@ -608,9 +605,9 @@
 
         // Sayfa Yükleme Kontrolleri
         window.addEventListener("DOMContentLoaded", () => {
-            // Gündem şeridi — giriş yapılmasa bile herkese açık, hemen yükle
-            loadGundem();
-            setInterval(loadGundem, 15 * 60 * 1000); // 15 dakikada bir tazele
+            // Yazılımcı sözleri şeridi — giriş yapılmasa bile herkese açık, hemen yükle
+            loadMotivasyon();
+            setInterval(loadMotivasyon, 15 * 60 * 1000); // 15 dakikada bir tazele
 
             if (currentUser) {
                 const loginScreen = document.getElementById("loginScreen");
@@ -884,24 +881,24 @@
             }
         }
 
-        // --- GÜNDEM ŞERİDİ (Google News RSS - backend üzerinden) ---
-        async function loadGundem() {
-            const track = document.getElementById("gundemTrack");
+        // --- GÜNLÜK YAZILIMCI SÖZLERİ (backend üzerinden, rastgele seçilmiş) ---
+        async function loadMotivasyon() {
+            const track = document.getElementById("motivasyonTrack");
             if (!track) return;
 
             try {
-                const response = await fetch(`${API_BASE}/gundem`);
+                const response = await fetch(`${API_BASE}/motivasyon`);
                 const data = await response.json();
 
-                if (data.status === "success" && data.headlines.length > 0) {
-                    track.innerHTML = data.headlines.map(h =>
-                        `<a href="${h.link}" target="_blank" rel="noopener noreferrer">${h.title}</a>`
-                    ).join('<span class="gundem-sep">•</span>');
+                if (data.status === "success" && data.sozler.length > 0) {
+                    track.innerHTML = data.sozler
+                        .map(soz => `<span class="motivasyon-item">${soz}</span>`)
+                        .join('<span class="motivasyon-sep">•</span>');
                 } else {
-                    track.innerText = "Gündem şu anda alınamıyor.";
+                    track.innerText = "Bugün söz bulamadık, kod yazmaya devam! 💻";
                 }
             } catch (error) {
-                track.innerText = "Gündem yüklenirken bağlantı hatası oluştu.";
+                track.innerText = "Sözler yüklenirken bağlantı hatası oluştu.";
             }
         }
 
