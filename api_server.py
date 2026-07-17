@@ -5,8 +5,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import shutil
 import os
+import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from typing import Optional, List
 from ai_engine import AIBot
 from document_loader import DocumentManager
 
@@ -48,6 +50,18 @@ def veritabanini_hazirla():
             ON CONFLICT (username) DO NOTHING
         """, (user, target_pass))
 
+    # Sohbet geçmişi tablosu
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id SERIAL PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            messages JSONB NOT NULL DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -81,6 +95,12 @@ class ChatRequest(BaseModel):
     message: str
     temperature: float = 0.7
     user_id: str = "genel"
+
+class ConversationSaveRequest(BaseModel):
+    user_id: str
+    title: str
+    messages: List[dict]
+    conversation_id: Optional[int] = None
 
 
 # --- KÖPRÜLER (ENDPOINTS) ---
@@ -236,6 +256,73 @@ def delete_user(username_to_delete: str):
 def reset_chat_history():
     bot_motoru.reset_history()
     return {"status": "success", "message": "Bot hafızası sıfırlandı."}
+
+# ==========================================
+# --- 💬 SOHBET GEÇMİŞİ KÖPRÜLERİ ---
+# ==========================================
+
+# 1. Kullanıcının sohbet listesini getir (sidebar için, mesajlar hariç — hafif)
+@app.get("/conversations")
+def get_conversations(user_id: str):
+    conn = get_conn()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT id, title, updated_at FROM conversations
+        WHERE user_id = %s ORDER BY updated_at DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return {"status": "success", "conversations": rows}
+
+# 2. Tek bir sohbetin tüm mesajlarını getir
+@app.get("/conversations/{conversation_id}")
+def get_conversation(conversation_id: int):
+    conn = get_conn()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT id, title, messages FROM conversations WHERE id = %s", (conversation_id,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if not row:
+        return {"status": "error", "message": "Sohbet bulunamadı."}
+    return {"status": "success", "conversation": row}
+
+# 3. Sohbeti kaydet (yeni oluştur veya güncelle)
+@app.post("/conversations/save")
+def save_conversation(request: ConversationSaveRequest):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    if request.conversation_id:
+        cursor.execute("""
+            UPDATE conversations SET messages = %s, updated_at = NOW()
+            WHERE id = %s AND user_id = %s
+        """, (json.dumps(request.messages), request.conversation_id, request.user_id))
+        conn.commit()
+        new_id = request.conversation_id
+    else:
+        cursor.execute("""
+            INSERT INTO conversations (user_id, title, messages)
+            VALUES (%s, %s, %s) RETURNING id
+        """, (request.user_id, request.title, json.dumps(request.messages)))
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"status": "success", "conversation_id": new_id}
+
+# 4. Sohbeti sil
+@app.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: int, user_id: str):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM conversations WHERE id = %s AND user_id = %s", (conversation_id, user_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"status": "success", "message": "Sohbet silindi."}
 
 # --- STATİK DOSYALAR VE ARAYÜZ ---
 
