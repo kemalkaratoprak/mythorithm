@@ -2,7 +2,7 @@ import os
 from groq import Groq
 
 class AIBot:
-    def __init__(self, model_name="llama-3.3-70b-versatile", document_manager=None):
+    def __init__(self, model_name="openai/gpt-oss-120b", document_manager=None):
         self.model_name = model_name
         self.doc_manager = document_manager
         self.system_prompt = """

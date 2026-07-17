@@ -86,7 +86,7 @@ app.add_middleware(
 kutuphaneci = DocumentManager()
 
 # 2. Motoru Başlatıyor ve Kütüphaneciyi Ona Bağlıyoruz
-bot_motoru = AIBot(model_name="llama-3.3-70b-versatile", document_manager=kutuphaneci)
+bot_motoru = AIBot(model_name="openai/gpt-oss-120b", document_manager=kutuphaneci)
 
 # --- VERİ ŞABLONLARI ---
 
