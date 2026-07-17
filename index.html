@@ -525,6 +525,8 @@
         const API_BASE = "https://mythorithm.onrender.com";
         let currentUser = sessionStorage.getItem("mythorithm_user") || null;
         let isRegisterMode = false;
+        let currentConversationId = null;   // null = henüz kaydedilmemiş yeni sohbet
+        let currentMessages = [];           // aktif sohbetin mesaj dizisi (backend'e kaydedilen)
 
         // Sayfa Yükleme Kontrolleri
         window.addEventListener("DOMContentLoaded", () => {
@@ -540,7 +542,7 @@
                     loginScreen.style.transition = "none";
                     loginScreen.style.transform = "translateY(-100vh)";
                 }
-                loadSavedChat();
+                loadLatestConversation();
                 checkAdminStatus(); // Admin mi diye kontrol et
             }
             
@@ -563,22 +565,130 @@
             }
         }
 
-        // --- SOHBET YEDEKLEME MOTORU ---
-        function saveChatToLocal() {
-            const chatBox = document.getElementById("chatBox");
-            if (chatBox && currentUser) {
-                localStorage.setItem(`chat_history_${currentUser}`, chatBox.innerHTML);
+        // --- SOHBET YEDEKLEME MOTORU (Backend / PostgreSQL) ---
+        function saveConversationToServer() {
+            if (!currentUser || currentMessages.length === 0) return;
+
+            const title = currentMessages[0].content.slice(0, 40);
+
+            fetch(`${API_BASE}/conversations/save`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: currentUser,
+                    title: title,
+                    messages: currentMessages,
+                    conversation_id: currentConversationId
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    currentConversationId = data.conversation_id;
+                }
+            })
+            .catch(err => console.warn("Sohbet kaydedilemedi:", err));
+        }
+
+        // Kullanıcı giriş yaptığında en son sohbeti getirir (yoksa hoş geldin mesajı gösterir)
+        async function loadLatestConversation() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(`${API_BASE}/conversations?user_id=${currentUser}`);
+                const data = await response.json();
+                if (data.status === "success" && data.conversations.length > 0) {
+                    await loadConversation(data.conversations[0].id);
+                } else {
+                    addMessage(`👋 Hoş geldin ${currentUser}! Seninle çalışmaya hazırım.`, "bot-wrapper", "bot-msg");
+                }
+            } catch (error) {
+                console.warn("Sohbet geçmişi yüklenemedi:", error);
             }
         }
 
-        function loadSavedChat() {
+        // Sidebar'dan seçilen belirli bir sohbeti chatBox'a yükler
+        async function loadConversation(id) {
             const chatBox = document.getElementById("chatBox");
-            if (chatBox && currentUser) {
-                const savedHistory = localStorage.getItem(`chat_history_${currentUser}`);
-                if (savedHistory) {
-                    chatBox.innerHTML = savedHistory;
-                    setTimeout(scrollToBottom, 50);
+            if (chatBox) chatBox.innerHTML = "";
+            currentMessages = [];
+            currentConversationId = id;
+
+            try {
+                const response = await fetch(`${API_BASE}/conversations/${id}`);
+                const data = await response.json();
+                if (data.status === "success") {
+                    const msgs = data.conversation.messages || [];
+                    msgs.forEach(msg => {
+                        const wrapperClass = msg.role === "bot" ? "bot-wrapper" : "user-wrapper";
+                        const msgClass = msg.role === "bot" ? "bot-msg" : "user-msg";
+                        renderMessageToDOM(msg.content, wrapperClass, msgClass, msg.time || "");
+                        currentMessages.push(msg);
+                    });
+                    scrollToBottom();
                 }
+            } catch (error) {
+                console.warn("Sohbet yüklenemedi:", error);
+            }
+            closeSidebars();
+        }
+
+        // Sidebar'daki sohbet geçmişi listesini doldurur
+        async function loadChatHistoryList() {
+            const listEl = document.getElementById("chatHistoryList");
+            if (!listEl || !currentUser) return;
+            listEl.innerHTML = `<p style="color:#a0aec0; text-align:center; padding: 20px 0;"><i class="fa-solid fa-circle-notch fa-spin"></i> Yükleniyor...</p>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/conversations?user_id=${currentUser}`);
+                const data = await response.json();
+
+                if (data.status !== "success" || data.conversations.length === 0) {
+                    listEl.innerHTML = `<p style="color:#a0aec0; text-align:center; padding: 20px 0;">Henüz kayıtlı bir sohbet yok.</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = "";
+                data.conversations.forEach(conv => {
+                    const item = document.createElement("div");
+                    item.style.cssText = "display:flex; align-items:center; justify-content:space-between; padding:12px; border-radius:8px; margin-bottom:8px; cursor:pointer; background:rgba(255,255,255,0.03); transition:0.3s;";
+                    item.onmouseover = () => { item.style.background = "rgba(201,168,76,0.1)"; };
+                    item.onmouseout = () => { item.style.background = "rgba(255,255,255,0.03)"; };
+
+                    const titleSpan = document.createElement("span");
+                    titleSpan.style.cssText = "color:#E8F4FD; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;";
+                    titleSpan.innerText = conv.title;
+                    titleSpan.onclick = () => loadConversation(conv.id);
+
+                    const delBtn = document.createElement("button");
+                    delBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+                    delBtn.style.cssText = "background:transparent; border:none; color:#a0aec0; cursor:pointer; padding:4px 8px; margin-left:8px; font-size:14px;";
+                    delBtn.onmouseover = () => { delBtn.style.color = "#E74C3C"; };
+                    delBtn.onmouseout = () => { delBtn.style.color = "#a0aec0"; };
+                    delBtn.onclick = (e) => { e.stopPropagation(); deleteConversation(conv.id); };
+
+                    item.appendChild(titleSpan);
+                    item.appendChild(delBtn);
+                    listEl.appendChild(item);
+                });
+            } catch (error) {
+                listEl.innerHTML = `<p style="color:#E74C3C; text-align:center; padding: 20px 0;">Yüklenirken hata oluştu.</p>`;
+            }
+        }
+
+        // Sohbeti sunucudan siler
+        async function deleteConversation(id) {
+            if (!confirm("Bu sohbeti silmek istediğine emin misin?")) return;
+            try {
+                await fetch(`${API_BASE}/conversations/${id}?user_id=${currentUser}`, { method: "DELETE" });
+                if (currentConversationId === id) {
+                    const chatBox = document.getElementById("chatBox");
+                    if (chatBox) chatBox.innerHTML = "";
+                    currentMessages = [];
+                    currentConversationId = null;
+                }
+                loadChatHistoryList();
+            } catch (error) {
+                alert("Sohbet silinirken hata oluştu.");
             }
         }
 
@@ -637,14 +747,8 @@
                         loginScreen.style.transition = "transform 0.6s cubic-bezier(0.77, 0, 0.175, 1)";
                         loginScreen.style.transform = "translateY(-100vh)";
                         
-                        loadSavedChat();
+                        loadLatestConversation();
                         checkAdminStatus(); // Giriş yapınca yetkisini kontrol et
-                        
-                        setTimeout(() => {
-                            if(!localStorage.getItem(`chat_history_${currentUser}`)) {
-                                addMessage(`👋 Hoş geldin ${currentUser}! Seninle çalışmaya hazırım.`, "bot-wrapper", "bot-msg");
-                            }
-                        }, 600);
                     }
                 } else {
                     alert(`❌ İşlem Başarısız: ${data.message}`);
@@ -665,7 +769,7 @@
             const thinkingIndicator = document.getElementById("thinkingIndicator");
 
             addMessage(`📎 Yükleniyor: ${fileName}...`, "user-wrapper", "user-msg");
-            saveChatToLocal();
+            saveConversationToServer();
 
             if (thinkingIndicator && chatBox) {
                 thinkingIndicator.style.display = "block";
@@ -691,11 +795,11 @@
                 } else {
                     addMessage(`❌ Yükleme hatası: ${data.message}`, "bot-wrapper", "bot-msg");
                 }
-                saveChatToLocal();
+                saveConversationToServer();
             } catch (error) {
                 if (thinkingIndicator) thinkingIndicator.style.display = "none";
                 addMessage("❌ Sunucuya bağlanılamadı veya dosya yüklenemedi.", "bot-wrapper", "bot-msg");
-                saveChatToLocal();
+                saveConversationToServer();
             }
             
             fileInput.value = ""; 
@@ -720,7 +824,7 @@
 
             addMessage(messageText, "user-wrapper", "user-msg");
             userInputField.value = "";
-            saveChatToLocal();
+            saveConversationToServer();
 
             if (sendButton) sendButton.disabled = true;
             
@@ -754,30 +858,28 @@
                     addDownloadButton(codeMatch[2], codeMatch[1] || "txt");
                 }
                 
-                saveChatToLocal();
+                saveConversationToServer();
                 speakText(data.response); 
             } catch (error) {
                 if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
                 addMessage("❌ Sunucuya bağlanılamadı. API açık mı?", "bot-wrapper", "bot-msg");
-                saveChatToLocal();
+                saveConversationToServer();
             }
 
             if (sendButton) sendButton.disabled = false;
         }
 
-        function addMessage(text, wrapperClass, msgClass) {
+        // Sadece DOM'a basar, mesaj listesine eklemez (geçmiş sohbet yüklerken kullanılır)
+        function renderMessageToDOM(text, wrapperClass, msgClass, timeStr) {
             const chatBoxEl = document.getElementById("chatBox");
             const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
             if (!chatBoxEl) return;
 
-            const time = new Date();
-            const timeStr = time.getHours().toString().padStart(2, '0') + ":" + time.getMinutes().toString().padStart(2, '0');
-            
             const wrapperDiv = document.createElement("div");
             wrapperDiv.className = `message-wrapper ${wrapperClass}`;
-            
+
             let avatarHtml = wrapperClass === "bot-wrapper" ? `<div class="avatar-mini">M</div>` : `<div class="avatar-mini" style="color:white; border-color:#1E3A5F; background-color:#1E3A5F;"><i class="fa-solid fa-user"></i></div>`;
-            
+
             wrapperDiv.innerHTML = `
                 ${avatarHtml}
                 <div>
@@ -791,7 +893,18 @@
             } else {
                 chatBoxEl.appendChild(wrapperDiv);
             }
+        }
+
+        // DOM'a basar + aktif sohbetin mesaj dizisine ekler (canlı sohbet için)
+        function addMessage(text, wrapperClass, msgClass) {
+            const time = new Date();
+            const timeStr = time.getHours().toString().padStart(2, '0') + ":" + time.getMinutes().toString().padStart(2, '0');
+
+            renderMessageToDOM(text, wrapperClass, msgClass, timeStr);
             scrollToBottom();
+
+            const role = wrapperClass === "bot-wrapper" ? "bot" : "user";
+            currentMessages.push({ role, content: text, time: timeStr });
         }
 
         function scrollToBottom() {
@@ -884,8 +997,8 @@
                 overlay.style.opacity = '1'; 
                 chatSidebar.style.left = '0'; // Menü soldan kayarak gelsin
             }, 10);
-            
-            // İleride buraya eski sohbetleri çeken bir fonksiyon (loadChatHistoryList) ekleyeceğiz
+
+            loadChatHistoryList();
         }
 
         // Yeni Sohbet Başlat
@@ -901,10 +1014,9 @@
             const chatBox = document.getElementById("chatBox");
             if (chatBox) chatBox.innerHTML = "";
 
-            // Kaydedilmiş yerel geçmişi de sil
-            if (currentUser) {
-                localStorage.removeItem(`chat_history_${currentUser}`);
-            }
+            // Aktif sohbet state'ini sıfırla — bir sonraki mesaj yeni bir sohbet olarak kaydedilecek
+            currentMessages = [];
+            currentConversationId = null;
 
             // Paneli kapat
             closeSidebars();
@@ -1115,7 +1227,6 @@
                 const data = await response.json();
                 if(data.status === "success") {
                     addMessage("✅ Hafıza başarıyla sıfırlandı. Yeni belgeler yüklemeye hazırım.", "bot-wrapper", "bot-msg");
-                    if(currentUser) localStorage.removeItem(`chat_history_${currentUser}`);
                     closeSettings();
                 }
             } catch (e) { alert("Sunucu bağlantı hatası!"); }
@@ -1140,8 +1251,8 @@
             <h3 style="color:#7C5CBF; margin:16px 0 8px;">1. Toplanan Veriler</h3>
             <p style="color:#a0aec0; line-height:1.7;">Mythorithm, kullanıcı adı ve şifrenizi yalnızca giriş doğrulaması amacıyla saklar. Yüklediğiniz belgeler, yalnızca sizin sorularınıza yanıt vermek için kullanılır ve başkalarıyla paylaşılmaz.</p>
 
-            <h3 style="color:#7C5CBF; margin:16px 0 8px;">2. Çerezler</h3>
-            <p style="color:#a0aec0; line-height:1.7;">Mythorithm, oturum bilgilerinizi ve sohbet geçmişinizi tarayıcınızın yerel depolama alanında (localStorage) saklar. Bu veriler yalnızca cihazınızda bulunur ve sunucuya gönderilmez.</p>
+            <h3 style="color:#7C5CBF; margin:16px 0 8px;">2. Oturum ve Sohbet Geçmişi</h3>
+            <p style="color:#a0aec0; line-height:1.7;">Mythorithm, oturum bilgilerinizi tarayıcınızın oturum belleğinde (sessionStorage) tutar. Sohbet geçmişiniz ise güvenli şekilde sunucu veritabanında saklanır; böylece farklı cihazlardan giriş yaptığınızda geçmiş sohbetlerinize erişebilirsiniz.</p>
 
             <h3 style="color:#7C5CBF; margin:16px 0 8px;">3. Üçüncü Taraf Hizmetler</h3>
             <p style="color:#a0aec0; line-height:1.7;">Uygulama; Groq (yapay zeka), Pinecone (vektör hafıza) ve Supabase (veritabanı) hizmetlerini kullanmaktadır. Bu hizmetler kendi gizlilik politikalarına tabidir.</p>
