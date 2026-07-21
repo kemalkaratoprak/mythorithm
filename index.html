@@ -220,16 +220,84 @@
         }
 
         .user-msg {
-            background-color: #1E3A5F;
-            color: #E8F4FD;
+            background: linear-gradient(135deg, #4C3A8C, #1E3A5F);
+            color: #F0F4FF;
             border-bottom-right-radius: 4px;
         }
 
         .bot-msg {
-            background-color: #16213E;
+            background-color: #1B2136;
             color: #C8D8E8;
             border-bottom-left-radius: 4px;
-            border: 1px solid rgba(124, 92, 191, 0.3);
+            border: 1px solid rgba(160, 174, 192, 0.15);
+        }
+
+        .msg-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7C5CBF;
+            margin-bottom: 4px;
+        }
+        .user-wrapper .msg-name { text-align: right; color: #C9A84C; }
+
+        .message-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .bot-wrapper .message-footer { justify-content: flex-start; }
+        .user-wrapper .message-footer { justify-content: flex-end; }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid rgba(160, 174, 192, 0.25);
+            color: #a0aec0;
+            font-size: 10.5px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+        .copy-btn:hover { color: #C9A84C; border-color: #C9A84C; }
+
+        /* TOAST BİLDİRİMLERİ */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 3000;
+        }
+        .toast {
+            background: #16213E;
+            border: 1px solid rgba(201, 168, 76, 0.4);
+            color: #E8F4FD;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 280px;
+            animation: toast-in 0.25s ease-out;
+        }
+        .toast.success { border-color: rgba(76, 201, 120, 0.5); }
+        .toast.error { border-color: rgba(231, 76, 60, 0.5); }
+        .toast.fade-out { animation: toast-out 0.25s ease-in forwards; }
+        @keyframes toast-in {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toast-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
         }
 
         .avatar-mini {
@@ -246,7 +314,7 @@
             flex-shrink: 0;
         }
 
-        .time-stamp { font-size: 10px; color: #4B5563; margin-top: 5px; text-align: right; }
+        .time-stamp { font-size: 10px; color: #4B5563; }
         .thinking { color: #C9A84C; font-style: italic; font-size: 14px; display: none; padding: 10px; }
 
         /* ALT GİRDİ PANELİ */
@@ -457,6 +525,8 @@
     </style>
 </head>
 <body>
+
+    <div class="toast-container" id="toastContainer"></div>
 
     <div id="loginScreen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0B0F19; z-index: 2000; display: flex; justify-content: center; align-items: center; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);">
         <div style="background: #0A0E1A; padding: 40px; border-radius: 20px; border: 1px solid #7C5CBF; width: 350px; box-shadow: 0 15px 35px rgba(0,0,0,0.7); text-align: center; max-height: 90dvh; overflow-y: auto;">
@@ -956,8 +1026,10 @@
                     } else {
                         addMessage(`✅ Harika! '${fileName}' başarıyla okundu ve vektörel hafızama aktarıldı.`, "bot-wrapper", "bot-msg");
                     }
+                    showToast("Dosya yüklendi!", "success");
                 } else {
                     addMessage(`❌ Yükleme hatası: ${data.message}`, "bot-wrapper", "bot-msg");
+                    showToast("Dosya yüklenemedi.", "error");
                 }
                 saveConversationToServer();
             } catch (error) {
@@ -1045,13 +1117,20 @@
             const wrapperDiv = document.createElement("div");
             wrapperDiv.className = `message-wrapper ${wrapperClass}`;
 
-            let avatarHtml = wrapperClass === "bot-wrapper" ? `<div class="avatar-mini">M</div>` : `<div class="avatar-mini" style="color:white; border-color:#1E3A5F; background-color:#1E3A5F;"><i class="fa-solid fa-user"></i></div>`;
+            const isBot = wrapperClass === "bot-wrapper";
+            let avatarHtml = isBot ? `<div class="avatar-mini">M</div>` : `<div class="avatar-mini" style="color:white; border-color:#1E3A5F; background-color:#1E3A5F;"><i class="fa-solid fa-user"></i></div>`;
+            const nameLabel = isBot ? "Mythorithm" : "Sen";
+            const copyBtnHtml = isBot ? `<button class="copy-btn" onclick="copyMessageText(this)"><i class="fa-regular fa-copy"></i> Kopyala</button>` : "";
 
             wrapperDiv.innerHTML = `
                 ${avatarHtml}
                 <div>
+                    <div class="msg-name">${nameLabel}</div>
                     <div class="message ${msgClass}">${text.replace(/\n/g, '<br>')}</div>
-                    <div class="time-stamp">${timeStr}</div>
+                    <div class="message-footer">
+                        <span class="time-stamp">${timeStr}</span>
+                        ${copyBtnHtml}
+                    </div>
                 </div>
             `;
 
@@ -1060,6 +1139,37 @@
             } else {
                 chatBoxEl.appendChild(wrapperDiv);
             }
+        }
+
+        // Bir asistan mesajının metnini panoya kopyalar
+        function copyMessageText(btnEl) {
+            const footer = btnEl.closest(".message-footer");
+            const contentDiv = footer ? footer.parentElement : null;
+            const msgEl = contentDiv ? contentDiv.querySelector(".message") : null;
+            if (!msgEl) return;
+
+            navigator.clipboard.writeText(msgEl.innerText).then(() => {
+                showToast("Kopyalandı!", "success");
+            }).catch(() => {
+                showToast("Kopyalanamadı, tarayıcı izni gerekebilir.", "error");
+            });
+        }
+
+        // --- TOAST BİLDİRİM SİSTEMİ ---
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toastContainer");
+            if (!container) return;
+
+            const icon = type === "success" ? "✅" : type === "error" ? "⚠️" : "ℹ️";
+            const toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("fade-out");
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         // DOM'a basar + aktif sohbetin mesaj dizisine ekler (canlı sohbet için)
