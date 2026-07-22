@@ -13,6 +13,7 @@ load_dotenv()
 
 import json
 import random
+import bcrypt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
@@ -35,6 +36,28 @@ def get_conn():
     """Railway'in otomatik sağladığı DATABASE_URL ile bağlantı kurar."""
     return psycopg2.connect(os.environ.get("DATABASE_URL"))
 
+# --- ŞİFRE GÜVENLİĞİ (bcrypt) ---
+def hash_password(plain_password: str) -> str:
+    """Düz metin şifreyi bcrypt ile hash'ler (veritabanına bu haliyle yazılır)."""
+    return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def is_bcrypt_hash(value: str) -> bool:
+    return value.startswith(("$2a$", "$2b$", "$2y$"))
+
+def verify_password(plain_password: str, stored_password: str) -> bool:
+    """
+    Hem yeni (bcrypt hash'li) hem eski (düz metin) kayıtlarla çalışır.
+    Eski kayıtlar login_user() içinde başarılı girişte otomatik hash'e yükseltilir.
+    """
+    if is_bcrypt_hash(stored_password):
+        try:
+            return bcrypt.checkpw(plain_password.encode("utf-8"), stored_password.encode("utf-8"))
+        except Exception:
+            return False
+    else:
+        # Geriye dönük uyumluluk: henüz hash'lenmemiş eski kayıt
+        return plain_password == stored_password
+
 def veritabanini_hazirla():
     conn = get_conn()
     cursor = conn.cursor()
@@ -49,7 +72,7 @@ def veritabanini_hazirla():
 
     # Başlangıç kullanıcıları — şifreler environment variable'dan okunuyor
     admin_pass = os.environ.get("ADMIN_PASSWORD", "admin123")
-    test_kullanicilari = [("admin", admin_pass)]
+    test_kullanicilari = [("admin", hash_password(admin_pass))]
     for user, target_pass in test_kullanicilari:
         cursor.execute("""
             INSERT INTO users (username, password)
@@ -134,13 +157,22 @@ def login_user(request: LoginRequest):
     cursor = conn.cursor()
     cursor.execute("SELECT password FROM users WHERE username = %s", (username_clean,))
     result = cursor.fetchone()
-    cursor.close()
-    conn.close()
 
-    if result and result[0] == request.password:
+    if result and verify_password(request.password, result[0]):
+        # Eski (düz metin) bir kayıtsa, burada sessizce güvenli hash'e yükselt
+        if not is_bcrypt_hash(result[0]):
+            yeni_hash = hash_password(request.password)
+            cursor.execute("UPDATE users SET password = %s WHERE username = %s", (yeni_hash, username_clean))
+            conn.commit()
+            print(f"Sistem: {username_clean} şifresi otomatik olarak güvenli hash'e yükseltildi.")
+
+        cursor.close()
+        conn.close()
         print(f"Sistem: {username_clean} PostgreSQL doğrulmasıyla giriş yaptı.")
         return {"status": "success", "username": username_clean}
     else:
+        cursor.close()
+        conn.close()
         print(f"Sistem: {username_clean} için hatalı giriş denemesi!")
         return {"status": "error", "message": "Kullanıcı adı veya şifre hatalı!"}
 
@@ -159,7 +191,7 @@ def register_user(request: LoginRequest):
     try:
         cursor.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (username_clean, request.password)
+            (username_clean, hash_password(request.password))
         )
         conn.commit()
         print(f"Sistem: Yeni kullanıcı PostgreSQL'e yazıldı -> {username_clean}")

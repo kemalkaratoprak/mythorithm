@@ -10,3 +10,4 @@ aiofiles
 python-docx
 openpyxl
 python-dotenv
+bcrypt
