@@ -80,7 +80,26 @@
             flex-direction: column;
         }
 
-        .title-area h1 { margin: 0; color: #E2D5F8; font-size: 22px; }
+        .title-area h1 {
+            margin: 0;
+            font-size: 22px;
+            background: linear-gradient(90deg, #C9A84C, #7C5CBF 60%, #4C7EF0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .beta-badge {
+            font-size: 9.5px;
+            font-weight: 700;
+            background: rgba(231, 76, 60, 0.12);
+            color: #E74C3C;
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            padding: 2px 6px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
         .status { color: #22C55E; font-size: 12px; margin-top: 2px; }
         .status i { font-size: 10px; }
 
@@ -89,6 +108,69 @@
             align-items: center;
             gap: 20px;
         }
+
+        .user-avatar-wrap { position: relative; cursor: pointer; }
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7C5CBF, #1E3A5F);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            border: 2px solid rgba(201, 168, 76, 0.4);
+        }
+        .online-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #22C55E;
+            border: 2px solid #0A0E1A;
+        }
+        .user-dropdown {
+            display: none;
+            position: absolute;
+            top: 48px;
+            right: 0;
+            background: #16213E;
+            border: 1px solid rgba(124, 92, 191, 0.4);
+            border-radius: 10px;
+            min-width: 170px;
+            padding: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 500;
+        }
+        .user-dropdown.open { display: block; }
+        .user-dropdown-name {
+            padding: 8px 10px;
+            color: #C9A84C;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(160, 174, 192, 0.15);
+            margin-bottom: 6px;
+            word-break: break-all;
+        }
+        .user-dropdown button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #E8F4FD;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: left;
+        }
+        .user-dropdown button:hover { background: rgba(255,255,255,0.06); }
 
         .tagline { color: #6B7280; font-size: 13px; font-style: italic; }
 
@@ -563,7 +645,9 @@
             
             <div class="logo-circle"><img src="/static/mythorithm_logo.png" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;"></div>
             <div class="title-area">
-                <h1>Mythorithm</h1>
+                <div>
+                    <h1 style="display:inline;">🧙 Mythorithm</h1><span class="beta-badge">BETA</span>
+                </div>
                 <div class="status"><i class="fa-solid fa-circle"></i> Çevrimiçi</div>
             </div>
         </div>
@@ -579,6 +663,16 @@
             </button>
             <button class="memory-btn" onclick="openMemory()"><i class="fa-solid fa-database"></i> Hafıza</button>
             <button class="memory-btn" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Ayarlar</button>
+
+            <div class="user-avatar-wrap" id="userAvatarWrap" onclick="toggleUserMenu(event)">
+                <div class="user-avatar" id="userAvatarInitial">?</div>
+                <span class="online-dot"></span>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-name" id="userDropdownName">Kullanıcı</div>
+                    <button onclick="openSettings(); closeUserMenu();"><i class="fa-solid fa-gear"></i> Ayarlar</button>
+                    <button onclick="logoutUser()" style="color:#E74C3C;"><i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -693,6 +787,7 @@
                     loginScreen.style.transition = "none";
                     loginScreen.style.transform = "translateY(-100vh)";
                 }
+                updateUserAvatar();
                 loadLatestConversation();
                 checkAdminStatus(); // Admin mi diye kontrol et
             }
@@ -990,6 +1085,7 @@
                         loginScreen.style.transition = "transform 0.6s cubic-bezier(0.77, 0, 0.175, 1)";
                         loginScreen.style.transform = "translateY(-100vh)";
                         
+                        updateUserAvatar();
                         loadLatestConversation();
                         checkAdminStatus(); // Giriş yapınca yetkisini kontrol et
                     }
@@ -999,6 +1095,39 @@
             } catch (error) {
                 alert("❌ Sunucu bağlantı hatası! API açık mı?");
             }
+        }
+
+        // --- KULLANICI MENÜSÜ / ÇIKIŞ ---
+        function toggleUserMenu(event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById("userDropdown");
+            if (dropdown) dropdown.classList.toggle("open");
+        }
+
+        function closeUserMenu() {
+            const dropdown = document.getElementById("userDropdown");
+            if (dropdown) dropdown.classList.remove("open");
+        }
+
+        // Menü dışına tıklanınca kapansın
+        document.addEventListener("click", (e) => {
+            const wrap = document.getElementById("userAvatarWrap");
+            if (wrap && !wrap.contains(e.target)) closeUserMenu();
+        });
+
+        function logoutUser() {
+            if (!confirm("Çıkış yapmak istediğine emin misin?")) return;
+            sessionStorage.removeItem("mythorithm_user");
+            location.reload();
+        }
+
+        // Avatar baş harfini ve dropdown'daki kullanıcı adını günceller
+        function updateUserAvatar() {
+            if (!currentUser) return;
+            const initialEl = document.getElementById("userAvatarInitial");
+            const nameEl = document.getElementById("userDropdownName");
+            if (initialEl) initialEl.innerText = currentUser.charAt(0).toUpperCase();
+            if (nameEl) nameEl.innerText = currentUser;
         }
 
         // --- GÜNLÜK YAZILIMCI SÖZLERİ (backend üzerinden, rastgele seçilmiş) ---
