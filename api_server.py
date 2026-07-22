@@ -287,13 +287,23 @@ def reset_chat_history():
 
 # 1. Kullanıcının sohbet listesini getir (sidebar için, mesajlar hariç — hafif)
 @app.get("/conversations")
-def get_conversations(user_id: str):
+def get_conversations(user_id: str, q: Optional[str] = None):
     conn = get_conn()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("""
-        SELECT id, title, updated_at FROM conversations
-        WHERE user_id = %s ORDER BY updated_at DESC
-    """, (user_id,))
+
+    if q and q.strip():
+        arama = f"%{q.strip()}%"
+        cursor.execute("""
+            SELECT id, title, updated_at FROM conversations
+            WHERE user_id = %s AND (title ILIKE %s OR messages::text ILIKE %s)
+            ORDER BY updated_at DESC
+        """, (user_id, arama, arama))
+    else:
+        cursor.execute("""
+            SELECT id, title, updated_at FROM conversations
+            WHERE user_id = %s ORDER BY updated_at DESC
+        """, (user_id,))
+
     rows = cursor.fetchall()
     cursor.close()
     conn.close()

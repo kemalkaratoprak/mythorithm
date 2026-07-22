@@ -620,6 +620,14 @@
                 <i class="fa-solid fa-plus"></i> Yeni Sohbet Başlat
             </button>
         </div>
+
+        <div style="padding: 0 15px 12px;">
+            <div style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #4B5563; font-size: 13px;"></i>
+                <input type="text" id="chatSearchInput" placeholder="Sohbetlerde ara..." oninput="handleChatSearch(this.value)"
+                    style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(160,174,192,0.2); border-radius: 8px; padding: 9px 12px 9px 34px; color: #E8F4FD; font-size: 13px; outline: none; box-sizing: border-box;">
+            </div>
+        </div>
         
         <div class="sidebar-content" id="chatHistoryList" style="padding-top: 0;">
         </div>
@@ -715,7 +723,7 @@
             // Başlık için hoş geldin mesajını değil, ilk KULLANICI mesajını kullan
             const firstUserMsg = currentMessages.find(m => m.role === "user");
             const titleSource = firstUserMsg ? firstUserMsg.content : currentMessages[0].content;
-            const title = titleSource.slice(0, 40);
+            const title = titleSource.slice(0, 30);
 
             fetch(`${API_BASE}/conversations/save`, {
                 method: "POST",
@@ -826,42 +834,84 @@
         }
 
         // Sidebar'daki sohbet geçmişi listesini doldurur
-        async function loadChatHistoryList() {
+        // Bir tarihi Bugün / Dün / Geçen Hafta / Daha Eski olarak sınıflandırır
+        function getDateGroup(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfYesterday = new Date(startOfToday);
+            startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+            const startOfWeek = new Date(startOfToday);
+            startOfWeek.setDate(startOfWeek.getDate() - 7);
+
+            if (date >= startOfToday) return "Bugün";
+            if (date >= startOfYesterday) return "Dün";
+            if (date >= startOfWeek) return "Geçen Hafta";
+            return "Daha Eski";
+        }
+
+        // Arama kutusuna yazarken 300ms bekleyip sunucuya sorar (gereksiz istek atmasın diye)
+        let chatSearchTimeout = null;
+        function handleChatSearch(value) {
+            clearTimeout(chatSearchTimeout);
+            chatSearchTimeout = setTimeout(() => {
+                loadChatHistoryList(value.trim());
+            }, 300);
+        }
+
+        async function loadChatHistoryList(query = "") {
             const listEl = document.getElementById("chatHistoryList");
             if (!listEl || !currentUser) return;
             listEl.innerHTML = `<p style="color:#a0aec0; text-align:center; padding: 20px 0;"><i class="fa-solid fa-circle-notch fa-spin"></i> Yükleniyor...</p>`;
 
             try {
-                const response = await fetch(`${API_BASE}/conversations?user_id=${currentUser}`);
+                const q = query ? `&q=${encodeURIComponent(query)}` : "";
+                const response = await fetch(`${API_BASE}/conversations?user_id=${currentUser}${q}`);
                 const data = await response.json();
 
                 if (data.status !== "success" || data.conversations.length === 0) {
-                    listEl.innerHTML = `<p style="color:#a0aec0; text-align:center; padding: 20px 0;">Henüz kayıtlı bir sohbet yok.</p>`;
+                    listEl.innerHTML = `<p style="color:#a0aec0; text-align:center; padding: 20px 0;">${query ? "Sonuç bulunamadı." : "Henüz kayıtlı bir sohbet yok."}</p>`;
                     return;
                 }
 
-                listEl.innerHTML = "";
+                // Tarihe göre grupla
+                const groups = { "Bugün": [], "Dün": [], "Geçen Hafta": [], "Daha Eski": [] };
                 data.conversations.forEach(conv => {
-                    const item = document.createElement("div");
-                    item.style.cssText = "display:flex; align-items:center; justify-content:space-between; padding:12px; border-radius:8px; margin-bottom:8px; cursor:pointer; background:rgba(255,255,255,0.03); transition:0.3s;";
-                    item.onmouseover = () => { item.style.background = "rgba(201,168,76,0.1)"; };
-                    item.onmouseout = () => { item.style.background = "rgba(255,255,255,0.03)"; };
+                    groups[getDateGroup(conv.updated_at)].push(conv);
+                });
 
-                    const titleSpan = document.createElement("span");
-                    titleSpan.style.cssText = "color:#E8F4FD; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;";
-                    titleSpan.innerText = conv.title;
-                    titleSpan.onclick = () => loadConversation(conv.id);
+                listEl.innerHTML = "";
+                ["Bugün", "Dün", "Geçen Hafta", "Daha Eski"].forEach(groupName => {
+                    const items = groups[groupName];
+                    if (items.length === 0) return;
 
-                    const delBtn = document.createElement("button");
-                    delBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
-                    delBtn.style.cssText = "background:transparent; border:none; color:#a0aec0; cursor:pointer; padding:4px 8px; margin-left:8px; font-size:14px;";
-                    delBtn.onmouseover = () => { delBtn.style.color = "#E74C3C"; };
-                    delBtn.onmouseout = () => { delBtn.style.color = "#a0aec0"; };
-                    delBtn.onclick = (e) => { e.stopPropagation(); deleteConversation(conv.id); };
+                    const groupHeader = document.createElement("div");
+                    groupHeader.innerText = groupName;
+                    groupHeader.style.cssText = "color:#7C5CBF; font-size:11px; font-weight:bold; letter-spacing:0.5px; margin: 14px 4px 6px; text-transform: uppercase;";
+                    listEl.appendChild(groupHeader);
 
-                    item.appendChild(titleSpan);
-                    item.appendChild(delBtn);
-                    listEl.appendChild(item);
+                    items.forEach(conv => {
+                        const item = document.createElement("div");
+                        item.style.cssText = "display:flex; align-items:center; justify-content:space-between; padding:12px; border-radius:8px; margin-bottom:8px; cursor:pointer; background:rgba(255,255,255,0.03); transition:0.3s;";
+                        item.onmouseover = () => { item.style.background = "rgba(201,168,76,0.1)"; };
+                        item.onmouseout = () => { item.style.background = "rgba(255,255,255,0.03)"; };
+
+                        const titleSpan = document.createElement("span");
+                        titleSpan.style.cssText = "color:#E8F4FD; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;";
+                        titleSpan.innerText = conv.title;
+                        titleSpan.onclick = () => loadConversation(conv.id);
+
+                        const delBtn = document.createElement("button");
+                        delBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+                        delBtn.style.cssText = "background:transparent; border:none; color:#a0aec0; cursor:pointer; padding:4px 8px; margin-left:8px; font-size:14px;";
+                        delBtn.onmouseover = () => { delBtn.style.color = "#E74C3C"; };
+                        delBtn.onmouseout = () => { delBtn.style.color = "#a0aec0"; };
+                        delBtn.onclick = (e) => { e.stopPropagation(); deleteConversation(conv.id); };
+
+                        item.appendChild(titleSpan);
+                        item.appendChild(delBtn);
+                        listEl.appendChild(item);
+                    });
                 });
             } catch (error) {
                 listEl.innerHTML = `<p style="color:#E74C3C; text-align:center; padding: 20px 0;">Yüklenirken hata oluştu.</p>`;
@@ -1274,6 +1324,9 @@
                 overlay.style.opacity = '1'; 
                 chatSidebar.style.left = '0'; // Menü soldan kayarak gelsin
             }, 10);
+
+            const searchInput = document.getElementById("chatSearchInput");
+            if (searchInput) searchInput.value = "";
 
             loadChatHistoryList();
         }
