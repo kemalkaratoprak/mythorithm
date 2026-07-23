@@ -14,6 +14,7 @@ load_dotenv()
 import json
 import random
 import bcrypt
+import urllib.parse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
@@ -131,6 +132,10 @@ class ConversationSaveRequest(BaseModel):
     title: str
     messages: List[dict]
     conversation_id: Optional[int] = None
+
+class ImageGenRequest(BaseModel):
+    prompt: str
+    user_id: str = "genel"
 
 
 # --- KÖPRÜLER (ENDPOINTS) ---
@@ -258,6 +263,27 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel"))
         if os.path.exists(file_path):
             os.remove(file_path)
         return {"status": "error", "message": f"Hata oluştu: {str(e)}"}
+
+# Görsel Oluşturma Köprüsü (Pollinations.ai - ücretsiz, key gerektirmez)
+@app.post("/generate-image")
+def generate_image(request: ImageGenRequest):
+    prompt = request.prompt.strip()
+    if not prompt:
+        return {"status": "error", "message": "Görsel için bir açıklama yazmalısın."}
+
+    # Aşırı uzun prompt'ları kısalt
+    prompt = prompt[:500]
+
+    encoded_prompt = urllib.parse.quote(prompt)
+    seed = random.randint(1, 999999)
+    # safe=true -> NSFW içerik filtresi (public bir site olduğu için önemli)
+    image_url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=1024&height=1024&seed={seed}&safe=true&model=flux&nologo=true"
+    )
+
+    print(f"Sistem: {request.user_id} görsel oluşturma isteği -> '{prompt}'")
+    return {"status": "success", "image_url": image_url, "prompt": prompt}
 
 # Hafızadaki Belgeleri Listeleme Köprüsü
 @app.get("/documents")
