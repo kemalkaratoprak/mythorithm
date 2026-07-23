@@ -1075,7 +1075,10 @@
                     msgs.forEach(msg => {
                         const wrapperClass = msg.role === "bot" ? "bot-wrapper" : "user-wrapper";
                         const msgClass = msg.role === "bot" ? "bot-msg" : "user-msg";
-                        renderMessageToDOM(msg.content, wrapperClass, msgClass, msg.time || "");
+                        // Eski kayıtlarda isRawHtml alanı olmayabilir; içerik <img etiketiyle başlıyorsa
+                        // geriye dönük uyumluluk için yine ham HTML olarak render edelim
+                        const isRawHtml = msg.isRawHtml === true || /<img[\s/]/i.test(msg.content || "");
+                        renderMessageToDOM(msg.content, wrapperClass, msgClass, msg.time || "", isRawHtml);
                         currentMessages.push(msg);
                     });
                     scrollToBottom(true);
@@ -1409,7 +1412,7 @@
                     const imgSrc = data.image_data || data.image_url;
                     const safeAlt = prompt.replace(/"/g, "&quot;");
                     const imgHtml = `<img src="${imgSrc}" alt="${safeAlt}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel oluşturulamadı, farklı bir açıklamayla tekrar dener misin?';">`;
-                    addMessage(imgHtml, "bot-wrapper", "bot-msg");
+                    addMessage(imgHtml, "bot-wrapper", "bot-msg", true);
                 } else {
                     addMessage(`❌ ${data.message}`, "bot-wrapper", "bot-msg");
                 }
@@ -1448,11 +1451,11 @@
             const qsCards = document.getElementById("quickStartCards");
             if (qsCards) qsCards.remove();
 
-            // Kullanıcı mesajı: prompt + küçük önizleme
+            // Kullanıcı mesajı: prompt (escape edilmiş) + küçük önizleme (trusted)
             const reader = new FileReader();
             reader.onload = (e) => {
                 const imgHtml = `<img src="${e.target.result}" style="max-width:220px; border-radius:10px; display:block; margin-top:6px;">`;
-                addMessage(`🖌️ ${prompt}${imgHtml}`, "user-wrapper", "user-msg");
+                addMessage(`🖌️ ${escapeHtml(prompt)}${imgHtml}`, "user-wrapper", "user-msg", true);
                 saveConversationToServer();
             };
             reader.readAsDataURL(file);
@@ -1483,7 +1486,7 @@
                 if (data.status === "success") {
                     const imgSrc = data.image_data || data.image_url;
                     const imgHtml = `<img src="${imgSrc}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?';">`;
-                    addMessage(imgHtml, "bot-wrapper", "bot-msg");
+                    addMessage(imgHtml, "bot-wrapper", "bot-msg", true);
                 } else {
                     addMessage(`❌ ${data.message}`, "bot-wrapper", "bot-msg");
                 }
@@ -1516,7 +1519,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const imgHtml = `<img src="${e.target.result}" style="max-width:220px; border-radius:10px; display:block; margin-top:6px;">`;
-                    addMessage(`📎 ${fileName}${imgHtml}`, "user-wrapper", "user-msg");
+                    addMessage(`📎 ${escapeHtml(fileName)}${imgHtml}`, "user-wrapper", "user-msg", true);
                     saveConversationToServer();
                 };
                 reader.readAsDataURL(file);
@@ -1633,7 +1636,49 @@
         }
 
         // Sadece DOM'a basar, mesaj listesine eklemez (geçmiş sohbet yüklerken kullanılır)
-        function renderMessageToDOM(text, wrapperClass, msgClass, timeStr) {
+        // HTML özel karakterlerini etkisiz hale getirir (XSS / bozuk etiket önleme)
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Asistan/kullanıcı metnini GÜVENLİ şekilde biçimlendirir:
+        // önce tüm HTML'i etkisizleştirir, sonra üzerine basit markdown (kod bloğu, satır içi kod, kalın, link) uygular.
+        // Ham HTML asla doğrudan çalıştırılmaz — bu yalnızca metin (isRawHtml=false) mesajlar için kullanılır.
+        function renderMarkdownSafe(text) {
+            let out = escapeHtml(text);
+
+            // Kod blokları ```...```
+            out = out.replace(/```([\s\S]*?)```/g, (match, code) => {
+                return `<pre class="code-block"><code>${code.trim()}</code></pre>`;
+            });
+
+            // Satır içi kod `...`
+            out = out.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+            // Kalın **...**
+            out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+            // Markdown görsel sözdizimi ![alt](url) -> gerçek <img> OLARAK basılmaz (model çoğunlukla
+            // var olmayan yer tutucu URL'ler üretiyor, kırık görsel yerine sade bir etiket gösteriyoruz)
+            out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, '🖼️ <em>$1</em>');
+
+            // Markdown link [metin](url) -> gerçek link
+            out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+            // Satır sonları (kod bloklarının içindekiler hariç tutulmuyor ama bu kabul edilebilir bir basitleştirme)
+            out = out.replace(/\n/g, '<br>');
+
+            return out;
+        }
+
+        // isRawHtml=true olan içerik (kendi oluşturduğumuz <img> önizlemeleri gibi) olduğu gibi basılır;
+        // aksi halde metin güvenli şekilde escape edilip hafif markdown uygulanır.
+        function renderMessageToDOM(text, wrapperClass, msgClass, timeStr, isRawHtml = false) {
             const chatBoxEl = document.getElementById("chatBox");
             const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
             if (!chatBoxEl) return;
@@ -1645,12 +1690,13 @@
             let avatarHtml = isBot ? `<div class="avatar-mini">M</div>` : `<div class="avatar-mini" style="color:white; border-color:var(--accent-blue-dark); background-color:var(--accent-blue-dark);"><i class="fa-solid fa-user"></i></div>`;
             const nameLabel = isBot ? "Mythorithm" : "Sen";
             const copyBtnHtml = isBot ? `<button class="copy-btn" onclick="copyMessageText(this)"><i class="fa-regular fa-copy"></i> Kopyala</button>` : "";
+            const content = isRawHtml ? text : renderMarkdownSafe(text);
 
             wrapperDiv.innerHTML = `
                 ${avatarHtml}
                 <div>
                     <div class="msg-name">${nameLabel}</div>
-                    <div class="message ${msgClass}">${text.replace(/\n/g, '<br>')}</div>
+                    <div class="message ${msgClass}">${content}</div>
                     <div class="message-footer">
                         <span class="time-stamp">${timeStr}</span>
                         ${copyBtnHtml}
@@ -1697,18 +1743,19 @@
         }
 
         // DOM'a basar + aktif sohbetin mesaj dizisine ekler (canlı sohbet için)
-        function addMessage(text, wrapperClass, msgClass) {
+        // isRawHtml=true: text zaten güvenilir/kendi oluşturduğumuz HTML'dir (örn. görsel önizlemesi), escape edilmez
+        function addMessage(text, wrapperClass, msgClass, isRawHtml = false) {
             const time = new Date();
             const timeStr = time.getHours().toString().padStart(2, '0') + ":" + time.getMinutes().toString().padStart(2, '0');
 
-            renderMessageToDOM(text, wrapperClass, msgClass, timeStr);
+            renderMessageToDOM(text, wrapperClass, msgClass, timeStr, isRawHtml);
 
             const role = wrapperClass === "bot-wrapper" ? "bot" : "user";
             // Kullanıcı kendi mesajını gönderdiğinde her zaman aşağı kaysın;
             // asistan mesajlarında kullanıcı yukarı kaydırdıysa rahatsız etmeyelim
             scrollToBottom(role === "user");
 
-            currentMessages.push({ role, content: text, time: timeStr });
+            currentMessages.push({ role, content: text, time: timeStr, isRawHtml });
         }
 
         // Kullanıcı sohbeti manuel yukarı kaydırdıysa yeni mesajlarda otomatik aşağı inmeyi durdurur

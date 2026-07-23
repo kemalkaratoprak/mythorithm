@@ -324,6 +324,26 @@ def generate_image(request: ImageGenRequest):
 # Görselden Görsele Dönüştürme Köprüsü (Pollinations.ai - kontext modeli)
 TRANSFORM_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
+import urllib.error
+
+
+def get_public_base_url(request: Request) -> str:
+    """
+    Pollinations'ın dışarıdan erişebileceği gerçek adresi üretir.
+    Render gibi platformlarda proxy arkasında request.base_url bazen 'http://' dönebilir,
+    ama dışa açık adres her zaman 'https://' olduğu için burada zorluyoruz.
+    PUBLIC_BASE_URL environment değişkeni varsa (örn. https://mythorithm.com.tr) o öncelikli.
+    """
+    override = os.environ.get("PUBLIC_BASE_URL")
+    if override:
+        return override.rstrip("/")
+
+    base = str(request.base_url).rstrip("/")
+    if base.startswith("http://"):
+        base = "https://" + base[len("http://"):]
+    return base
+
+
 @app.post("/transform-image")
 async def transform_image(
     request: Request,
@@ -348,7 +368,8 @@ async def transform_image(
             shutil.copyfileobj(file.file, f)
 
         # Pollinations'ın görseli çekebilmesi için geçici olarak herkese açık bir URL üretiyoruz
-        public_image_url = f"{str(request.base_url).rstrip('/')}/generated/{temp_filename}"
+        public_image_url = f"{get_public_base_url(request)}/generated/{temp_filename}"
+        print(f"Sistem: Dönüştürme için geçici görsel URL'si -> {public_image_url}")
 
         encoded_prompt = urllib.parse.quote(clean_prompt)
         encoded_image_url = urllib.parse.quote(public_image_url, safe="")
@@ -369,8 +390,17 @@ async def transform_image(
         print(f"Sistem: {user_id} için görsel dönüştürüldü -> '{clean_prompt}'")
         return {"status": "success", "image_data": f"data:image/jpeg;base64,{image_b64}", "prompt": clean_prompt}
 
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8", errors="ignore")[:300]
+        except Exception:
+            pass
+        print(f"Pollinations HTTP hatası ({e.code}): {error_body}")
+        return {"status": "error", "message": "Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?"}
+
     except Exception as e:
-        print(f"Görsel dönüştürme hatası: {e}")
+        print(f"Görsel dönüştürme hatası: {type(e).__name__}: {e}")
         return {"status": "error", "message": "Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?"}
 
     finally:
