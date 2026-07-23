@@ -489,6 +489,48 @@
         }
         .pdf-btn:hover { background-color: var(--border-gray); }
 
+        /* GÖRSEL OLUŞTURMA AYARLARI PANELİ */
+        .image-gen-options {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            margin-bottom: 8px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-accent);
+            border-radius: 10px;
+            padding: 10px;
+            min-width: 230px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 400;
+        }
+        .image-gen-options.open { display: block; }
+        .image-gen-options-title {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            margin: 8px 0 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .image-gen-options-title:first-child { margin-top: 0; }
+        .image-gen-options-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .igo-btn {
+            background: var(--bg-panel-alt);
+            border: 1px solid var(--border-gray);
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .igo-btn:hover { border-color: var(--accent-gold); }
+        .igo-btn.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: #fff;
+        }
+
         input[type="text"] {
             flex: 1;
             padding: 0 25px;
@@ -763,8 +805,32 @@
             <i class="fa-solid fa-paperclip"></i> PDF
         </button>
 
-        <button class="pdf-btn" onclick="generateImage()" title="Yazdığın açıklamadan görsel oluştur">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Çiz
+        <div style="position: relative; display: inline-flex; align-items: center;">
+            <button class="pdf-btn" onclick="generateImage()" title="Yazdığın açıklamadan görsel oluştur">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Çiz
+            </button>
+            <button id="imageGenOptionsTrigger" onclick="toggleImageGenOptions(event)" title="Görsel ayarları" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:0 6px; font-size:13px;">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+
+            <div class="image-gen-options" id="imageGenOptionsPanel">
+                <div class="image-gen-options-title">Model</div>
+                <div class="image-gen-options-row">
+                    <button class="igo-btn" data-type="model" data-value="flux" onclick="setImageGenModel('flux')">Flux (kaliteli)</button>
+                    <button class="igo-btn" data-type="model" data-value="turbo" onclick="setImageGenModel('turbo')">Turbo (hızlı)</button>
+                </div>
+                <div class="image-gen-options-title">Boyut</div>
+                <div class="image-gen-options-row">
+                    <button class="igo-btn" data-type="size" data-value="1024x1024" onclick="setImageGenSize(1024, 1024)">Kare</button>
+                    <button class="igo-btn" data-type="size" data-value="768x1024" onclick="setImageGenSize(768, 1024)">Dikey</button>
+                    <button class="igo-btn" data-type="size" data-value="1024x768" onclick="setImageGenSize(1024, 768)">Yatay</button>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="transformFileInput" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="setupTransformFileInput()">
+        <button class="pdf-btn" onclick="triggerTransformUpload()" title="Bir görsel yükleyip yazdığın açıklamayla dönüştür">
+            <i class="fa-solid fa-image"></i> Dönüştür
         </button>
         
         <button id="micBtn" onclick="startListening()" style="background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 0 15px; transition: 0.3s;">
@@ -856,6 +922,9 @@
         window.addEventListener("DOMContentLoaded", () => {
             // Tema ikonunu (zaten body'ye erkenden uygulanan sınıfa göre) senkronize et
             updateThemeIcon(document.body.classList.contains("light-theme"));
+
+            // Görsel oluşturma tercihlerini (model/boyut) panelde işaretle
+            syncImageGenOptionsUI();
 
             // Kullanıcı yukarı kaydırırsa otomatik kaydırmayı durdur, dibe dönünce tekrar başlat
             const chatBoxScrollEl = document.getElementById("chatBox");
@@ -1255,6 +1324,47 @@
 
         // --- KİŞİYE ÖZEL PDF YÜKLEME ---
         // --- GÖRSEL OLUŞTURMA (Pollinations.ai) ---
+        let imageGenModel = localStorage.getItem("mythorithm_img_model") || "flux";
+        let imageGenWidth = parseInt(localStorage.getItem("mythorithm_img_width")) || 1024;
+        let imageGenHeight = parseInt(localStorage.getItem("mythorithm_img_height")) || 1024;
+
+        function toggleImageGenOptions(event) {
+            if (event) event.stopPropagation();
+            const panel = document.getElementById("imageGenOptionsPanel");
+            if (panel) panel.classList.toggle("open");
+        }
+
+        document.addEventListener("click", (e) => {
+            const panel = document.getElementById("imageGenOptionsPanel");
+            const trigger = document.getElementById("imageGenOptionsTrigger");
+            if (panel && panel.classList.contains("open") && !panel.contains(e.target) && (!trigger || !trigger.contains(e.target))) {
+                panel.classList.remove("open");
+            }
+        });
+
+        function setImageGenModel(model) {
+            imageGenModel = model;
+            localStorage.setItem("mythorithm_img_model", model);
+            syncImageGenOptionsUI();
+        }
+
+        function setImageGenSize(w, h) {
+            imageGenWidth = w;
+            imageGenHeight = h;
+            localStorage.setItem("mythorithm_img_width", w);
+            localStorage.setItem("mythorithm_img_height", h);
+            syncImageGenOptionsUI();
+        }
+
+        function syncImageGenOptionsUI() {
+            document.querySelectorAll('.igo-btn[data-type="model"]').forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.value === imageGenModel);
+            });
+            document.querySelectorAll('.igo-btn[data-type="size"]').forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.value === `${imageGenWidth}x${imageGenHeight}`);
+            });
+        }
+
         async function generateImage() {
             const userInputField = document.getElementById("userInput");
             if (!userInputField) return;
@@ -1284,7 +1394,13 @@
                 const response = await fetch(`${API_BASE}/generate-image`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt: prompt, user_id: currentUser })
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        user_id: currentUser,
+                        model: imageGenModel,
+                        width: imageGenWidth,
+                        height: imageGenHeight
+                    })
                 });
                 const data = await response.json();
                 if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
@@ -1303,6 +1419,82 @@
                 addMessage("❌ Görsel oluşturulurken bağlantı hatası oluştu.", "bot-wrapper", "bot-msg");
                 saveConversationToServer();
             }
+        }
+
+        // --- GÖRSELDEN GÖRSELE DÖNÜŞTÜRME (Pollinations.ai - kontext) ---
+        function triggerTransformUpload() {
+            const userInputField = document.getElementById("userInput");
+            const prompt = userInputField ? userInputField.value.trim() : "";
+            if (!prompt) {
+                showToast("Önce görseli nasıl dönüştürmemi istediğini yaz.", "error");
+                return;
+            }
+            document.getElementById("transformFileInput").click();
+        }
+
+        async function setupTransformFileInput() {
+            const fileInput = document.getElementById("transformFileInput");
+            if (!fileInput || fileInput.files.length === 0) return;
+
+            const file = fileInput.files[0];
+            const userInputField = document.getElementById("userInput");
+            const prompt = userInputField.value.trim();
+            if (!prompt) {
+                showToast("Önce görseli nasıl dönüştürmemi istediğini yaz.", "error");
+                fileInput.value = "";
+                return;
+            }
+
+            const qsCards = document.getElementById("quickStartCards");
+            if (qsCards) qsCards.remove();
+
+            // Kullanıcı mesajı: prompt + küçük önizleme
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imgHtml = `<img src="${e.target.result}" style="max-width:220px; border-radius:10px; display:block; margin-top:6px;">`;
+                addMessage(`🖌️ ${prompt}${imgHtml}`, "user-wrapper", "user-msg");
+                saveConversationToServer();
+            };
+            reader.readAsDataURL(file);
+
+            userInputField.value = "";
+
+            const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
+            const chatBoxEl = document.getElementById("chatBox");
+            if (thinkingIndicatorEl && chatBoxEl) {
+                thinkingIndicatorEl.style.display = "block";
+                chatBoxEl.appendChild(thinkingIndicatorEl);
+            }
+            scrollToBottom(true);
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("prompt", prompt);
+            formData.append("user_id", currentUser);
+
+            try {
+                const response = await fetch(`${API_BASE}/transform-image`, {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
+
+                if (data.status === "success") {
+                    const imgSrc = data.image_data || data.image_url;
+                    const imgHtml = `<img src="${imgSrc}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?';">`;
+                    addMessage(imgHtml, "bot-wrapper", "bot-msg");
+                } else {
+                    addMessage(`❌ ${data.message}`, "bot-wrapper", "bot-msg");
+                }
+                saveConversationToServer();
+            } catch (error) {
+                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
+                addMessage("❌ Görsel dönüştürülürken bağlantı hatası oluştu.", "bot-wrapper", "bot-msg");
+                saveConversationToServer();
+            }
+
+            fileInput.value = "";
         }
 
         async function setupFileInput() {

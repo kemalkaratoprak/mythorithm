@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -15,6 +15,7 @@ import json
 import random
 import bcrypt
 import base64
+import uuid
 import urllib.parse
 import urllib.request
 import psycopg2
@@ -24,6 +25,12 @@ from ai_engine import AIBot
 from document_loader import DocumentManager
 
 app = FastAPI(title="Mythorithm API")
+
+# Görselden-görsele dönüştürme (kontext) için Pollinations'ın geçici olarak
+# erişebileceği küçük bir klasör — /static gibi tüm kök dizini değil, SADECE bunu yayınlıyoruz.
+GENERATED_IMAGES_DIR = "generated_images"
+os.makedirs(GENERATED_IMAGES_DIR, exist_ok=True)
+app.mount("/generated", StaticFiles(directory=GENERATED_IMAGES_DIR), name="generated")
 
 
 @app.get("/robots.txt", include_in_schema=False)
@@ -138,6 +145,9 @@ class ConversationSaveRequest(BaseModel):
 class ImageGenRequest(BaseModel):
     prompt: str
     user_id: str = "genel"
+    model: str = "flux"
+    width: int = 1024
+    height: int = 1024
 
 
 # --- KÖPRÜLER (ENDPOINTS) ---
@@ -267,6 +277,9 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel"))
         return {"status": "error", "message": f"Hata oluştu: {str(e)}"}
 
 # Görsel Oluşturma Köprüsü (Pollinations.ai - ücretsiz, key gerektirmez)
+ALLOWED_IMAGE_MODELS = {"flux", "turbo"}
+ALLOWED_IMAGE_SIZES = {(1024, 1024), (768, 1024), (1024, 768)}
+
 @app.post("/generate-image")
 def generate_image(request: ImageGenRequest):
     prompt = request.prompt.strip()
@@ -276,12 +289,16 @@ def generate_image(request: ImageGenRequest):
     # Aşırı uzun prompt'ları kısalt
     prompt = prompt[:500]
 
+    # Kötüye kullanımı önlemek için model/boyut değerlerini izin verilen listeyle doğrula
+    model = request.model if request.model in ALLOWED_IMAGE_MODELS else "flux"
+    width, height = (request.width, request.height) if (request.width, request.height) in ALLOWED_IMAGE_SIZES else (1024, 1024)
+
     encoded_prompt = urllib.parse.quote(prompt)
     seed = random.randint(1, 999999)
     # safe=true -> NSFW içerik filtresi (public bir site olduğu için önemli)
     image_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1024&seed={seed}&safe=true&model=flux&nologo=true"
+        f"?width={width}&height={height}&seed={seed}&safe=true&model={model}&nologo=true"
     )
 
     api_key = os.environ.get("POLLINATIONS_API_KEY")
@@ -303,6 +320,63 @@ def generate_image(request: ImageGenRequest):
     # Key yoksa (veya Bearer isteği başarısız olduysa): tarayıcı görseli doğrudan anonim URL'den çeker
     print(f"Sistem: {request.user_id} görsel oluşturma isteği (anonim) -> '{prompt}'")
     return {"status": "success", "image_url": image_url, "prompt": prompt}
+
+# Görselden Görsele Dönüştürme Köprüsü (Pollinations.ai - kontext modeli)
+TRANSFORM_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+@app.post("/transform-image")
+async def transform_image(
+    request: Request,
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+    user_id: str = Form("genel")
+):
+    clean_prompt = prompt.strip()[:500]
+    if not clean_prompt:
+        return {"status": "error", "message": "Görseli nasıl dönüştürmemi istediğini yazmalısın."}
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in TRANSFORM_ALLOWED_EXTENSIONS:
+        return {"status": "error", "message": "Sadece jpg, png veya webp formatındaki görseller desteklenir."}
+
+    # Benzersiz, tahmin edilemez bir geçici dosya adı (başkası URL'yi tahmin edip göremesin)
+    temp_filename = f"{uuid.uuid4().hex}{ext}"
+    temp_path = os.path.join(GENERATED_IMAGES_DIR, temp_filename)
+
+    try:
+        with open(temp_path, "wb+") as f:
+            shutil.copyfileobj(file.file, f)
+
+        # Pollinations'ın görseli çekebilmesi için geçici olarak herkese açık bir URL üretiyoruz
+        public_image_url = f"{str(request.base_url).rstrip('/')}/generated/{temp_filename}"
+
+        encoded_prompt = urllib.parse.quote(clean_prompt)
+        encoded_image_url = urllib.parse.quote(public_image_url, safe="")
+        transform_url = (
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+            f"?model=kontext&image={encoded_image_url}"
+            f"&width=1024&height=1024&safe=true&nologo=true"
+        )
+
+        api_key = os.environ.get("POLLINATIONS_API_KEY")
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+        req = urllib.request.Request(transform_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=90) as response:
+            image_bytes = response.read()
+
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        print(f"Sistem: {user_id} için görsel dönüştürüldü -> '{clean_prompt}'")
+        return {"status": "success", "image_data": f"data:image/jpeg;base64,{image_b64}", "prompt": clean_prompt}
+
+    except Exception as e:
+        print(f"Görsel dönüştürme hatası: {e}")
+        return {"status": "error", "message": "Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?"}
+
+    finally:
+        # Pollinations görseli çektiği anda işimiz biter, geçici dosyayı hemen temizle
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 # Hafızadaki Belgeleri Listeleme Köprüsü
 @app.get("/documents")
