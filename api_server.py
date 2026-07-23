@@ -14,7 +14,9 @@ load_dotenv()
 import json
 import random
 import bcrypt
+import base64
 import urllib.parse
+import urllib.request
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
@@ -282,7 +284,24 @@ def generate_image(request: ImageGenRequest):
         f"?width=1024&height=1024&seed={seed}&safe=true&model=flux&nologo=true"
     )
 
-    print(f"Sistem: {request.user_id} görsel oluşturma isteği -> '{prompt}'")
+    api_key = os.environ.get("POLLINATIONS_API_KEY")
+
+    if api_key:
+        # Kayıtlı hesap varsa: istek sunucu üzerinden Bearer token ile yapılır,
+        # anahtar hiçbir zaman tarayıcıya/istemciye gönderilmez.
+        try:
+            req = urllib.request.Request(image_url, headers={"Authorization": f"Bearer {api_key}"})
+            with urllib.request.urlopen(req, timeout=30) as response:
+                image_bytes = response.read()
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            print(f"Sistem: {request.user_id} için görsel (kayıtlı hesapla) oluşturuldu -> '{prompt}'")
+            return {"status": "success", "image_data": f"data:image/jpeg;base64,{image_b64}", "prompt": prompt}
+        except Exception as e:
+            print(f"Pollinations Bearer istekte hata, anonim moda düşülüyor: {e}")
+            # Hata olursa aşağıdaki anonim moda düşer, kullanıcı yine de görseli alır
+
+    # Key yoksa (veya Bearer isteği başarısız olduysa): tarayıcı görseli doğrudan anonim URL'den çeker
+    print(f"Sistem: {request.user_id} görsel oluşturma isteği (anonim) -> '{prompt}'")
     return {"status": "success", "image_url": image_url, "prompt": prompt}
 
 # Hafızadaki Belgeleri Listeleme Köprüsü

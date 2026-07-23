@@ -1290,8 +1290,9 @@
                 if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
 
                 if (data.status === "success") {
+                    const imgSrc = data.image_data || data.image_url;
                     const safeAlt = prompt.replace(/"/g, "&quot;");
-                    const imgHtml = `<img src="${data.image_url}" alt="${safeAlt}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel oluşturulamadı, farklı bir açıklamayla tekrar dener misin?';">`;
+                    const imgHtml = `<img src="${imgSrc}" alt="${safeAlt}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel oluşturulamadı, farklı bir açıklamayla tekrar dener misin?';">`;
                     addMessage(imgHtml, "bot-wrapper", "bot-msg");
                 } else {
                     addMessage(`❌ ${data.message}`, "bot-wrapper", "bot-msg");
