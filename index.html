@@ -470,6 +470,17 @@
             display: flex;
             gap: 15px;
             align-items: center;
+            flex-shrink: 0;
+        }
+
+        #appFooter {
+            text-align: center;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-link);
+            background-color: var(--bg-deep);
+            border-top: 1px solid rgba(124, 92, 191, 0.15);
+            flex-shrink: 0;
         }
 
         .pdf-btn {
@@ -688,9 +699,11 @@
                 box-sizing: border-box !important;
             }
             
-            /* FOOTER GİZLE — klavye açıkken üste binmesin */
-            div[style*="text-align: center; padding: 10px; font-size: 13px;"] {
-                display: none !important;
+            /* FOOTER — mobilde daha küçük ve az yer kaplasın */
+            #appFooter {
+                font-size: 10.5px;
+                padding: 6px 10px;
+                line-height: 1.4;
             }
         }
 
@@ -757,7 +770,7 @@
             <div class="logo-circle"><img src="/static/mythorithm_logo.png" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;"></div>
             <div class="title-area">
                 <div>
-                    <h1 style="display:inline;">Mythorithm</h1><span class="beta-badge">BETA</span>
+                    <h1 style="display:inline;">🧙 Mythorithm</h1><span class="beta-badge">BETA</span>
                 </div>
                 <div class="status"><i class="fa-solid fa-circle"></i> Çevrimiçi</div>
             </div>
@@ -837,6 +850,11 @@
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">
             Gönder <i class="fa-solid fa-paper-plane"></i>
         </button>
+    </div>
+
+    <div id="appFooter">
+        © 2026 Mythorithm · Developed by <span style="color: var(--accent-purple); font-weight: 600;">Kemal Karatoprak</span> · 
+        <span onclick="openPrivacyPolicy()" style="cursor: pointer; text-decoration: underline; color: var(--text-link);">Gizlilik & Çerez Politikası</span>
     </div>
 
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebars()"></div>
@@ -2011,11 +2029,7 @@
         }
     </script>
 
-    <!-- FOOTER -->
-    <div style="text-align: center; padding: 10px; font-size: 13px; color: var(--text-link); position: fixed; bottom: 0; left: 0; right: 0; pointer-events: none; z-index: 1; background: linear-gradient(transparent, rgba(10,22,40,0.95)); padding-top: 20px;">
-        © 2026 Mythorithm · Developed by <span style="color: var(--accent-purple); font-weight: 600;">Kemal Karatoprak</span> · 
-        <span onclick="openPrivacyPolicy()" style="cursor: pointer; pointer-events: all; text-decoration: underline; color: var(--text-link);">Gizlilik & Çerez Politikası</span>
-    </div>
+    <!-- FOOTER artık input-panel'in hemen altında, normal sayfa akışında (yukarı taşındı) -->
 
     <!-- GİZLİLİK & ÇEREZ POLİTİKASI MODAL -->
     <div id="privacyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto;">
@@ -2042,7 +2056,7 @@
             <p style="color:var(--text-secondary); line-height:1.7;">Sorularınız için: <span style="color:var(--accent-gold);">mythorithm.com.tr</span></p>
 
             <div style="margin-top:24px; text-align:center; font-size:12px; color:var(--border-gray);">
-                Son güncelleme: Mayıs 2025 · Geliştirici: Kemal Karatoprak
+                Son güncelleme: Temmuz 2026 · Geliştirici: Kemal Karatoprak
             </div>
         </div>
     </div>
