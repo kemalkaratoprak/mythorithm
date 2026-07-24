@@ -828,11 +828,6 @@
             </div>
         </div>
 
-        <input type="file" id="transformFileInput" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="setupTransformFileInput()">
-        <button class="pdf-btn" onclick="triggerTransformUpload()" title="Bir görsel yükleyip yazdığın açıklamayla dönüştür">
-            <i class="fa-solid fa-image"></i> Dönüştür
-        </button>
-        
         <button id="micBtn" onclick="startListening()" style="background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 0 15px; transition: 0.3s;">
             <i class="fa-solid fa-microphone"></i>
         </button>
@@ -1422,82 +1417,6 @@
                 addMessage("❌ Görsel oluşturulurken bağlantı hatası oluştu.", "bot-wrapper", "bot-msg");
                 saveConversationToServer();
             }
-        }
-
-        // --- GÖRSELDEN GÖRSELE DÖNÜŞTÜRME (Pollinations.ai - kontext) ---
-        function triggerTransformUpload() {
-            const userInputField = document.getElementById("userInput");
-            const prompt = userInputField ? userInputField.value.trim() : "";
-            if (!prompt) {
-                showToast("Önce görseli nasıl dönüştürmemi istediğini yaz.", "error");
-                return;
-            }
-            document.getElementById("transformFileInput").click();
-        }
-
-        async function setupTransformFileInput() {
-            const fileInput = document.getElementById("transformFileInput");
-            if (!fileInput || fileInput.files.length === 0) return;
-
-            const file = fileInput.files[0];
-            const userInputField = document.getElementById("userInput");
-            const prompt = userInputField.value.trim();
-            if (!prompt) {
-                showToast("Önce görseli nasıl dönüştürmemi istediğini yaz.", "error");
-                fileInput.value = "";
-                return;
-            }
-
-            const qsCards = document.getElementById("quickStartCards");
-            if (qsCards) qsCards.remove();
-
-            // Kullanıcı mesajı: prompt (escape edilmiş) + küçük önizleme (trusted)
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const imgHtml = `<img src="${e.target.result}" style="max-width:220px; border-radius:10px; display:block; margin-top:6px;">`;
-                addMessage(`🖌️ ${escapeHtml(prompt)}${imgHtml}`, "user-wrapper", "user-msg", true);
-                saveConversationToServer();
-            };
-            reader.readAsDataURL(file);
-
-            userInputField.value = "";
-
-            const thinkingIndicatorEl = document.getElementById("thinkingIndicator");
-            const chatBoxEl = document.getElementById("chatBox");
-            if (thinkingIndicatorEl && chatBoxEl) {
-                thinkingIndicatorEl.style.display = "block";
-                chatBoxEl.appendChild(thinkingIndicatorEl);
-            }
-            scrollToBottom(true);
-
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("prompt", prompt);
-            formData.append("user_id", currentUser);
-
-            try {
-                const response = await fetch(`${API_BASE}/transform-image`, {
-                    method: "POST",
-                    body: formData
-                });
-                const data = await response.json();
-                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
-
-                if (data.status === "success") {
-                    const imgSrc = data.image_data || data.image_url;
-                    const imgHtml = `<img src="${imgSrc}" style="max-width:280px; width:100%; border-radius:10px; display:block;" onerror="this.parentElement.innerHTML='⚠️ Görsel dönüştürülemedi, farklı bir açıklamayla tekrar dener misin?';">`;
-                    addMessage(imgHtml, "bot-wrapper", "bot-msg", true);
-                } else {
-                    addMessage(`❌ ${data.message}`, "bot-wrapper", "bot-msg");
-                }
-                saveConversationToServer();
-            } catch (error) {
-                if (thinkingIndicatorEl) thinkingIndicatorEl.style.display = "none";
-                addMessage("❌ Görsel dönüştürülürken bağlantı hatası oluştu.", "bot-wrapper", "bot-msg");
-                saveConversationToServer();
-            }
-
-            fileInput.value = "";
         }
 
         async function setupFileInput() {
