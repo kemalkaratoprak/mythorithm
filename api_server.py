@@ -277,6 +277,9 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("genel"))
         return {"status": "error", "message": f"Hata oluştu: {str(e)}"}
 
 # Görsel Oluşturma Köprüsü (Pollinations.ai - ücretsiz, key gerektirmez)
+# Cloudflare'in "bot" sanıp 1010 hatasıyla engellemesini önlemek için gerçek bir tarayıcı User-Agent'ı kullanıyoruz
+POLLINATIONS_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
 ALLOWED_IMAGE_MODELS = {"flux", "turbo"}
 ALLOWED_IMAGE_SIZES = {(1024, 1024), (768, 1024), (1024, 768)}
 
@@ -307,7 +310,10 @@ def generate_image(request: ImageGenRequest):
         # Kayıtlı hesap varsa: istek sunucu üzerinden Bearer token ile yapılır,
         # anahtar hiçbir zaman tarayıcıya/istemciye gönderilmez.
         try:
-            req = urllib.request.Request(image_url, headers={"Authorization": f"Bearer {api_key}"})
+            req = urllib.request.Request(image_url, headers={
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": POLLINATIONS_USER_AGENT
+            })
             with urllib.request.urlopen(req, timeout=30) as response:
                 image_bytes = response.read()
             image_b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -380,7 +386,9 @@ async def transform_image(
         )
 
         api_key = os.environ.get("POLLINATIONS_API_KEY")
-        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        headers = {"User-Agent": POLLINATIONS_USER_AGENT}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         req = urllib.request.Request(transform_url, headers=headers)
         with urllib.request.urlopen(req, timeout=90) as response:
