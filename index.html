@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <!-- SEO -->
     <meta name="description" content="Mythorithm — Belgelerinizi yükleyin, yapay zeka ile sohbet edin. PDF, Word, Excel ve kod dosyalarını anlayan kişisel AI asistanınız.">
@@ -381,6 +381,16 @@
             font-size: 13px;
             margin: 8px 0;
             box-sizing: border-box;
+            /* Scrollbar styling for codeblocks */
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-purple) transparent;
+        }
+        .code-block::-webkit-scrollbar {
+            height: 6px;
+        }
+        .code-block::-webkit-scrollbar-thumb {
+            background: var(--accent-purple);
+            border-radius: 4px;
         }
 
         .inline-code {
@@ -626,10 +636,10 @@
         .sidebar-header h2 { margin: 0; font-size: 18px; color: var(--accent-gold); display: flex; align-items: center; gap: 10px; }
         
         .close-btn {
-            background: transparent; border: none; color: var(--text-muted); font-size: 20px;
-            cursor: pointer; transition: 0.3s; padding: 0; height: auto;
+            background: transparent; border: none; color: var(--text-muted); font-size: 24px;
+            cursor: pointer; transition: 0.3s; padding: 10px; height: auto; margin-right: -10px; /* Büyütülmüş dokunma alanı */
         }
-        .close-btn:hover { color: var(--text-primary); transform: scale(1.1); }
+        .close-btn:hover { color: var(--accent-red); transform: scale(1.1); }
 
         .sidebar-content { padding: 20px; overflow-y: auto; flex: 1; }
         
@@ -668,25 +678,29 @@
 
             /* GİRİŞ EKRANI */
             #loginScreen > div {
-                width: 88% !important; 
-                padding: 28px 20px !important;
+                width: 90% !important; 
+                padding: 24px 15px !important;
                 box-sizing: border-box !important;
             }
 
             /* ALT GİRDİ PANELİ */
             .input-panel {
-                padding: 10px 12px;
-                gap: 8px;
+                padding: 10px 8px;
+                gap: 6px;
+                /* Tarayıcı zoomlamasını önlemek için (iOS Safari) */
+                margin-bottom: env(safe-area-inset-bottom);
             }
             
             /* GÖNDER VE PDF BUTONLARI — yuvarlak ikon */
             .send-btn, .pdf-btn {
                 font-size: 0; 
                 padding: 0;
-                width: 46px;
-                min-width: 46px;
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
                 flex-shrink: 0;
                 justify-content: center;
+                border-radius: 50%;
             }
             .send-btn i, .pdf-btn i {
                 font-size: 16px; 
@@ -695,26 +709,36 @@
 
             /* MİKROFON BUTONU */
             #micBtn {
-                padding: 0 8px;
+                padding: 0 5px;
                 font-size: 18px;
                 flex-shrink: 0;
             }
 
+            /* GİRDİ INPUT ALANI */
+            input[type="text"] {
+                font-size: 15px; /* 16px altı iOS'ta otomatik zoom yapar, 15 px ama scale ayarı ekledik üstte */
+                padding: 0 15px; 
+                height: 44px;
+                flex: 1; 
+                min-width: 0; /* Flex sıkışmalarını önler */
+            }
+
             /* YAN PANELLER — tam ekran */
-            .sidebar { width: 100%; }
+            .sidebar { width: 100%; max-width: 100vw; }
+            .sidebar-header { padding: 15px 20px; }
             
             /* MESAJ BALONLARI */
             .chat-container { 
-                padding: 12px 4%;
-                gap: 14px;
+                padding: 12px 3%;
+                gap: 12px;
             }
-            .message-wrapper { max-width: 95%; }
-            .message { font-size: 14px; padding: 11px 14px; }
+            .message-wrapper { max-width: 96%; }
+            .message { font-size: 14.5px; padding: 12px 14px; }
 
             /* AYARLAR MODAL — mobilde taşmasın */
             #settingsModal {
-                width: 90% !important;
-                max-width: 340px !important;
+                width: 92% !important;
+                max-width: 360px !important;
                 padding: 20px !important;
                 box-sizing: border-box !important;
             }
@@ -723,32 +747,34 @@
             #privacyModal > div {
                 margin: 20px auto !important;
                 padding: 20px !important;
-                width: 90% !important;
+                width: 92% !important;
                 box-sizing: border-box !important;
             }
             
             /* FOOTER — mobilde daha küçük ve az yer kaplasın */
             #appFooter {
-                font-size: 10.5px;
+                font-size: 11px;
                 padding: 6px 10px;
                 line-height: 1.4;
             }
         }
 
         /* ==========================================
-        📱 ÇOK KÜÇÜK EKRANLAR (400px altı)
+        📱 ÇOK KÜÇÜK EKRANLAR (400px altı, örn: iPhone SE)
         ========================================== */
         @media screen and (max-width: 400px) {
             .title-area h1 { font-size: 15px; }
             .status { font-size: 10px; }
             .header { padding: 8px 10px; }
-            .input-panel { padding: 8px 10px; gap: 6px; }
+            .input-panel { padding: 8px 6px; gap: 4px; }
+            
             .send-btn, .pdf-btn {
-                width: 42px;
-                min-width: 42px;
-                height: 42px;
+                width: 40px;
+                min-width: 40px;
+                height: 40px;
             }
-            input[type="text"] { font-size: 14px; padding: 0 14px; height: 42px; }
+            #micBtn { font-size: 16px; padding: 0 4px; }
+            input[type="text"] { font-size: 14px; padding: 0 12px; height: 40px; }
         }
     </style>
 </head>
@@ -2008,7 +2034,7 @@
         function speakText(text) {
             if (!isVoiceEnabled || !text) return; 
             window.speechSynthesis.cancel(); 
-            const cleanText = text.replace(/[*_#`~]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');
+            const cleanText = text.replace(/[*_#`~]/g, '').replace(/([✀-➿]|[-]|[-]|[-]|[‑-⛿]|[-])/g, '');
             const utterance = new SpeechSynthesisUtterance(cleanText);
             const voiceSelect = document.getElementById("voiceSelect");
             if (availableVoices.length > 0 && voiceSelect && voiceSelect.value !== "") {
@@ -2063,7 +2089,7 @@
     <div id="privacyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto;">
         <div style="background:var(--bg-deep); border:1px solid var(--accent-purple); border-radius:12px; max-width:600px; margin:40px auto; padding:32px; color:var(--text-primary); position:relative;">
             <button onclick="document.getElementById('privacyModal').style.display='none'" 
-                style="position:absolute; top:16px; right:16px; background:transparent; border:none; color:var(--text-primary); font-size:20px; cursor:pointer;">
+                style="position:absolute; top:16px; right:16px; background:transparent; border:none; color:var(--text-primary); font-size:24px; padding:10px; margin:-10px; cursor:pointer;">
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <h2 style="color:var(--accent-gold); margin-bottom:20px;"><i class="fa-solid fa-shield-halved"></i> Gizlilik & Çerez Politikası</h2>
